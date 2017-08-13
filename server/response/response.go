@@ -6,9 +6,9 @@ holding some metadata, needed for returning the main
 response to the client
 */
 type Response struct {
-	Status  int         `json:"status"`
-	Payload interface{} `json:"payload"`
-	Error   string      `json:"error"`
+	Status  int         `json:"s"`
+	Payload interface{} `json:"p"`
+	Error   string      `json:"e"`
 }
 
 /*

@@ -26,7 +26,7 @@ func NewGame(
 	guessNum int) (*Game, error) {
 
 	if pOneID == nil {
-		return nil, errors.New("Player one is needed")
+		return nil, errors.New("Player one is required")
 	}
 
 	game := &Game{

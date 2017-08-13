@@ -20,9 +20,11 @@ import (
 )
 
 var numGen utils.NumGen
+var bcChecker utils.BCCheck
 
 func init() {
 	numGen = utils.GetNumGen()
+	bcChecker = utils.BCCheck{}
 }
 
 // GameController holds methods for managing a game session including http handlers
@@ -36,9 +38,11 @@ func NewGameController(s *mgo.Session, pc PlayerController) *GameController {
 	return &GameController{s, pc}
 }
 
-type initResponse struct {
+type initPayload struct {
 	GameSessionID string `json:"gameID"`
 }
+
+type guessPayload utils.BCCheckResult
 
 // InitHandler initializes a game process
 func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -104,11 +108,57 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	response.Payload = initResponse{GameSessionID: g.GameID.Hex()}
+	response.Payload = initPayload{GameSessionID: g.GameID.Hex()}
+	sendResponse(w, response)
+}
+
+// GuessHandler takes the player's guess number and returns the following bulls and cows
+func (gc GameController) GuessHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	response := response.New(200, "", nil)
+	guess, e := validateGuessNumberParam(ps)
+	if e != nil {
+		response.Error = e.Error()
+		response.Status = http.StatusBadRequest
+		sendResponse(w, response)
+		return
+	}
+
+	dbName := getTargetDbName(r)
+	gID := r.Header.Get("X-GameID")
+	if gID == "" {
+		response.Error = "Not a valid guess - not referring to a game"
+		response.Status = http.StatusBadRequest
+		sendResponse(w, response)
+		return
+	}
+
+	g, e := gc.getGameByID(gID, dbName)
+	if e != nil || g.StartTime == 0 {
+		response.Error = "Not a valid guess - not referring to a game"
+		response.Status = http.StatusBadRequest
+		sendResponse(w, response)
+		return
+	}
+
+	br := bcChecker.Check(g.GuessNum, guess)
+
+	response.Payload = br
 	sendResponse(w, response)
 }
 
 // Helper function
+
+func (gc GameController) getGameByID(gameID string, dbName string) (models.Game, error) {
+	game := models.Game{}
+	var err error
+	if bson.IsObjectIdHex(gameID) {
+		err = gc.session.DB(dbName).C(utils.DBCGames).FindId(bson.ObjectIdHex(gameID)).One(&game)
+	} else {
+		err = errors.New("Invalid gameID")
+	}
+
+	return game, err
+}
 
 func sendResponse(w http.ResponseWriter, response *response.Response) {
 	w.WriteHeader(response.Status)
@@ -170,4 +220,17 @@ func validateGameTypeParam(r *http.Request) (*int, error) {
 		return nil, errors.New("Could not parse game type parameter")
 	}
 	return &gt, nil
+}
+
+func validateGuessNumberParam(ps httprouter.Params) (int, error) {
+	g := ps.ByName("guess")
+	if g == "" {
+		return -1, errors.New("Missing parameter guess")
+	}
+
+	if len(g) != 4 || g[0] == byte('0') {
+		return -1, errors.New("Invalid guess number")
+	}
+
+	return strconv.Atoi(g)
 }
