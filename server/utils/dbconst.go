@@ -7,6 +7,9 @@ const (
 	// DBNameTest is the name of the application's test DB
 	DBNameTest = "BullsAndCowsTest"
 
-	// DBCPlayers the name of the table where all players are stored
+	// DBCPlayers is the name of the table where all players are stored
 	DBCPlayers = "players"
+
+	// DBCGames is the name of the table where all game sessions are stored
+	DBCGames = "games"
 )

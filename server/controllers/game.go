@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	mgo "gopkg.in/mgo.v2"
@@ -16,10 +17,15 @@ import (
 	"github.com/NikolovNikolay/bulls-and-cows/server/response"
 	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
 	"github.com/julienschmidt/httprouter"
-	uuid "github.com/nu7hatch/gouuid"
 )
 
-// GameController holds methods for managing a game session
+var numGen utils.NumGen
+
+func init() {
+	numGen = utils.GetNumGen()
+}
+
+// GameController holds methods for managing a game session including http handlers
 type GameController struct {
 	session *mgo.Session
 	pc      PlayerController
@@ -37,6 +43,7 @@ type initResponse struct {
 // InitHandler initializes a game process
 func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	r.ParseForm()
+	response := response.New(200, "", nil)
 
 	// Gettings the player's username
 	userName := r.Form.Get("userName")
@@ -45,6 +52,16 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 		userName = generateUserName()
 	}
 
+	gt, e := validateGameTypeParam(r)
+	if e != nil {
+		response.Error = e.Error()
+		response.Status = http.StatusBadRequest
+		sendResponse(w, response)
+		return
+	}
+
+	dbName := getTargetDbName(r)
+
 	// Searching if a player exists
 	p, err := gc.pc.findPlayerByName(userName, utils.DBName)
 	if err != nil {
@@ -52,35 +69,70 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 		p = generateNewPlayer(userName)
 		if insErr := gc.pc.createPlayer(p, utils.DBName); insErr != nil {
 			log.Fatal(insErr)
+			response.Status = http.StatusInternalServerError
+			response.Error = insErr.Error()
+			sendResponse(w, response)
+			return
 		}
 	}
-
-	response := response.New(200, "", nil)
 
 	if p.Logged == true {
 		// if the player exists and he is logged in we return forbidden - the new guy can not continue with this name
 		response.Status = http.StatusForbidden
 		response.Error = errors.New("Player with that name has already logged").Error()
-	} else {
-		// if the player exists and he is not logged in then its ok
-		p.Logged = true
-
-		// we update the player in the DB as now logged in and continue
-		if e := gc.pc.updatePlayer(p, utils.DBName); e != nil {
-			log.Fatal(e)
-		}
-
-		u, err := uuid.NewV4()
-		if err != nil {
-			response.Status = http.StatusInternalServerError
-			response.Error = errors.New("Could not initialize game session").Error()
-		} else {
-			response.Payload = initResponse{GameSessionID: u.String()}
-		}
+		sendResponse(w, response)
+		return
 	}
 
+	// if the player exists and he is not logged in then its ok
+	p.Logged = true
+
+	// we update the player in the DB as now logged in and continue
+	if e := gc.pc.updatePlayer(p, utils.DBName); e != nil {
+		response.Error = e.Error()
+		response.Status = http.StatusInternalServerError
+		log.Fatal(e)
+		sendResponse(w, response)
+		return
+	}
+
+	g, e := createNewGame(gc, dbName, gt, &p.ID, numGen.Gen())
+	if e != nil {
+		response.Error = e.Error()
+		response.Status = http.StatusBadRequest
+		sendResponse(w, response)
+		return
+	}
+
+	response.Payload = initResponse{GameSessionID: g.GameID.Hex()}
+	sendResponse(w, response)
+}
+
+// Helper function
+
+func sendResponse(w http.ResponseWriter, response *response.Response) {
 	w.WriteHeader(response.Status)
 	json.NewEncoder(w).Encode(response)
+}
+
+func createNewGame(gc GameController, dbName string, gt *int, pID *bson.ObjectId, guessNum int) (*models.Game, error) {
+	gameID := bson.NewObjectId()
+	game, e := models.NewGame(
+		gameID,
+		gt,
+		pID,
+		nil,
+		guessNum)
+
+	if e != nil {
+		return nil, e
+	}
+
+	if er := gc.session.DB(dbName).C(utils.DBCGames).Insert(game); er != nil {
+		return nil, er
+	}
+
+	return game, nil
 }
 
 func generateUserName() string {
@@ -95,4 +147,27 @@ func generateNewPlayer(name string) models.Player {
 		Name:   name,
 		Wins:   0,
 		Logged: false}
+}
+
+func getTargetDbName(r *http.Request) string {
+	th := r.Header.Get("x-test")
+	isTesting := th != ""
+	if isTesting {
+		return utils.DBNameTest
+	}
+
+	return utils.DBName
+}
+
+func validateGameTypeParam(r *http.Request) (*int, error) {
+	gameType := r.Form.Get("gameType")
+	if gameType == "" {
+		return nil, errors.New("Missing parameter game type")
+	}
+
+	gt, e := strconv.Atoi(gameType)
+	if e != nil {
+		return nil, errors.New("Could not parse game type parameter")
+	}
+	return &gt, nil
 }

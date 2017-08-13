@@ -29,6 +29,7 @@ func TestGenerateUserName(t *testing.T) {
 func TestInitHandler(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "http://localhost:8080/api/init", nil)
+	req.Header.Add("x-test", "true")
 
 	w := httptest.NewRecorder()
 	handler := http.HandlerFunc(HealthCheckHandler)

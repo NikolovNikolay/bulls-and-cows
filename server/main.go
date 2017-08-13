@@ -7,7 +7,6 @@ import (
 	ctrl "github.com/NikolovNikolay/bulls-and-cows/server/controllers"
 	r "github.com/NikolovNikolay/bulls-and-cows/server/router"
 	"github.com/julienschmidt/httprouter"
-
 	"gopkg.in/mgo.v2"
 )
 
@@ -15,7 +14,6 @@ func main() {
 	session := initMgoSession()
 	router := r.New()
 	router = configureRoutes(r.New(), session)
-
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
