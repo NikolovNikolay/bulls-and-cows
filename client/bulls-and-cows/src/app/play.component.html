@@ -1,0 +1,10 @@
+<div>
+    <h2>Now we are playing, {{name}}!</h2>
+    <label for="guess">Make a guess</label>
+    <input [(ngModel)]="guess" id="guess" type="text" />
+    <input type="button" value="Give it a try" (click)="makeGuess()" />
+    <div id="results">
+        <p id="bandc"></p>
+        <p id="history"></p>
+    </div>
+</div>

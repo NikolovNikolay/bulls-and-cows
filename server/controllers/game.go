@@ -42,7 +42,12 @@ type initPayload struct {
 	GameSessionID string `json:"gameID"`
 }
 
-type guessPayload utils.BCCheckResult
+type gamePayload struct {
+	BC      *utils.BCCheckResult `json:"bc"`
+	Guesses []int                `json:"m"`
+	Win     bool                 `json:"win"`
+	Time    int64                `json:"t"`
+}
 
 // InitHandler initializes a game process
 func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -50,7 +55,7 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 	response := response.New(200, "", nil)
 
 	// Gettings the player's username
-	userName := r.Form.Get("userName")
+	userName := r.PostFormValue("userName")
 	if userName == "" {
 		// if no username is set then we autogenerate one
 		userName = generateUserName()
@@ -82,20 +87,7 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 
 	if p.Logged == true {
 		// if the player exists and he is logged in we return forbidden - the new guy can not continue with this name
-		response.Status = http.StatusForbidden
-		response.Error = errors.New("Player with that name has already logged").Error()
-		sendResponse(w, response)
-		return
-	}
-
-	// if the player exists and he is not logged in then its ok
-	p.Logged = true
-
-	// we update the player in the DB as now logged in and continue
-	if e := gc.pc.updatePlayer(p, utils.DBName); e != nil {
-		response.Error = e.Error()
-		response.Status = http.StatusInternalServerError
-		log.Fatal(e)
+		response.Payload = initPayload{GameSessionID: p.LoggedIn.Hex()}
 		sendResponse(w, response)
 		return
 	}
@@ -108,6 +100,19 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
+	// if the player exists and he is not logged in then its ok
+	p.Logged = true
+	p.LoggedIn = &g.GameID
+
+	// we update the player in the DB as now logged in and continue
+	if e := gc.pc.updatePlayer(p, utils.DBName); e != nil {
+		response.Error = e.Error()
+		response.Status = http.StatusInternalServerError
+		log.Fatal(e)
+		sendResponse(w, response)
+		return
+	}
+
 	response.Payload = initPayload{GameSessionID: g.GameID.Hex()}
 	sendResponse(w, response)
 }
@@ -115,6 +120,7 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 // GuessHandler takes the player's guess number and returns the following bulls and cows
 func (gc GameController) GuessHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	response := response.New(200, "", nil)
+	r.ParseForm()
 	guess, e := validateGuessNumberParam(ps)
 	if e != nil {
 		response.Error = e.Error()
@@ -124,7 +130,7 @@ func (gc GameController) GuessHandler(w http.ResponseWriter, r *http.Request, ps
 	}
 
 	dbName := getTargetDbName(r)
-	gID := r.Header.Get("X-GameID")
+	gID := r.PostFormValue("X-GameID")
 	if gID == "" {
 		response.Error = "Not a valid guess - not referring to a game"
 		response.Status = http.StatusBadRequest
@@ -140,9 +146,66 @@ func (gc GameController) GuessHandler(w http.ResponseWriter, r *http.Request, ps
 		return
 	}
 
-	br := bcChecker.Check(g.GuessNum, guess)
+	if g.EndTime != 0 {
+		response.Payload = gamePayload{
+			BC:      &utils.BCCheckResult{Bulls: 4, Cows: 0},
+			Guesses: g.PlayerOneGuesses,
+			Win:     true,
+			Time:    g.EndTime - g.StartTime}
+		sendResponse(w, response)
+		return
+	}
 
-	response.Payload = br
+	br := bcChecker.Check(g.GuessNum, guess)
+	guesses := append(g.PlayerOneGuesses, []int{guess}...)
+
+	g.PlayerOneGuesses = guesses
+
+	// check if winner
+	var win = false
+	now := time.Now().Unix()
+	var t = (now - g.StartTime)
+	if br.Bulls == 4 {
+		win = true
+		g.EndTime = now
+		p, _ := gc.pc.findPlayerByID(g.PlayerOneID.Hex(), dbName)
+		p.Logged = false
+		p.LoggedIn = nil
+		e = gc.pc.updatePlayer(p, dbName)
+	}
+
+	e = gc.updateGameByID(g, dbName)
+	if e != nil {
+		response.Status = http.StatusInternalServerError
+		response.Error = e.Error()
+		sendResponse(w, response)
+	}
+
+	response.Payload = gamePayload{BC: br, Guesses: g.PlayerOneGuesses, Win: win, Time: t}
+	sendResponse(w, response)
+}
+
+// GetGameDataHandler returns data for a game session
+func (gc GameController) GetGameDataHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	response := response.New(200, "", nil)
+	r.ParseForm()
+	gameID := ps.ByName("gameID")
+	if gameID == "" || !bson.IsObjectIdHex(gameID) {
+		response.Status = http.StatusBadRequest
+		response.Error = errors.New("Invalid gameID parameter").Error()
+		sendResponse(w, response)
+		return
+	}
+	dbName := getTargetDbName(r)
+	g, e := gc.getGameByID(gameID, dbName)
+	if e != nil || g.StartTime == 0 {
+		response.Error = "Not a valid guess - not referring to a game"
+		response.Status = http.StatusBadRequest
+		sendResponse(w, response)
+		return
+	}
+
+	response.Payload = gamePayload{BC: nil, Guesses: g.PlayerOneGuesses, Win: g.EndTime != 0, Time: time.Now().Unix() - g.StartTime}
 	sendResponse(w, response)
 }
 
@@ -158,6 +221,19 @@ func (gc GameController) getGameByID(gameID string, dbName string) (models.Game,
 	}
 
 	return game, err
+}
+
+func (gc GameController) updateGameByID(g models.Game, dbName string) error {
+	if bson.IsObjectIdHex(g.GameID.Hex()) {
+		e := gc.session.DB(dbName).C(utils.DBCGames).UpdateId(g.GameID, g)
+		if e != nil {
+			return e
+		}
+
+		return nil
+	}
+	return errors.New("Invalid gameID")
+
 }
 
 func sendResponse(w http.ResponseWriter, response *response.Response) {
@@ -193,10 +269,11 @@ func generateUserName() string {
 
 func generateNewPlayer(name string) models.Player {
 	return models.Player{
-		ID:     bson.NewObjectId(),
-		Name:   name,
-		Wins:   0,
-		Logged: false}
+		ID:       bson.NewObjectId(),
+		Name:     name,
+		Wins:     0,
+		Logged:   false,
+		LoggedIn: nil}
 }
 
 func getTargetDbName(r *http.Request) string {
@@ -210,9 +287,9 @@ func getTargetDbName(r *http.Request) string {
 }
 
 func validateGameTypeParam(r *http.Request) (*int, error) {
-	gameType := r.Form.Get("gameType")
+	gameType := r.PostFormValue("gameType")
 	if gameType == "" {
-		return nil, errors.New("Missing parameter game type")
+		return nil, errors.New("Missing parameter for game type")
 	}
 
 	gt, e := strconv.Atoi(gameType)

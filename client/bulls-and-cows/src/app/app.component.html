@@ -1,0 +1,17 @@
+<!--The content below is only a placeholder and can be replaced.-->
+<div style="text-align:center; width: 50%; margin: 0 auto">
+  <h1>
+    {{title}}
+  </h1>
+
+  <div style="text-align:center">
+    <h3>
+      Please select some of the game options below
+    </h3>
+    <ul>
+      <li><a [routerLink]="['/init', 1]" id="ppvc">Player vs. Computer</a></li>
+      <li><a [routerLink]="['/init', 2]" id="pcvc">Browser vs. Computer</a></li>
+    </ul>
+  </div>
+</div>
+<router-outlet></router-outlet>

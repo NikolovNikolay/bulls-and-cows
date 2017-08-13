@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"errors"
+
 	"github.com/NikolovNikolay/bulls-and-cows/server/models"
 	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
 	mgo "gopkg.in/mgo.v2"
@@ -23,6 +25,18 @@ func (pc *PlayerController) findPlayerByName(name, dbName string) (p models.Play
 	err := c.Find(bson.M{"name": name}).One(&result)
 
 	return result, err
+}
+
+func (pc *PlayerController) findPlayerByID(id, dbName string) (p models.Player, e error) {
+	result := models.Player{}
+	if bson.IsObjectIdHex(id) {
+		c := pc.session.DB(dbName).C(utils.DBCPlayers)
+		err := c.FindId(bson.ObjectIdHex(id)).One(&result)
+
+		return result, err
+	}
+
+	return result, errors.New("Invalid player id")
 }
 
 func (pc *PlayerController) createPlayer(p models.Player, dbName string) (e error) {

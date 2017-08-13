@@ -12,8 +12,8 @@ type Game struct {
 	GameType         *int           `json:"type" bson:"type"`
 	PlayerOneID      *bson.ObjectId `json:"playerOne" bson:"playerOne"`
 	PlayerTwoID      *bson.ObjectId `json:"playerTwo" bson:"playerTwo"`
-	PlayerOneGuesses []int16        `json:"playerOneGuesses" bson:"playerOneGuesses"`
-	PlayerTwoGuesses []int16        `json:"playerTwoGuesses" bson:"playerTwoGuesses"`
+	PlayerOneGuesses []int          `json:"playerOneGuesses" bson:"playerOneGuesses"`
+	PlayerTwoGuesses []int          `json:"playerTwoGuesses" bson:"playerTwoGuesses"`
 	GuessNum         int            `json:"guess" bson:"guess"`
 }
 
