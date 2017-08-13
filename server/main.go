@@ -23,7 +23,7 @@ func configureRoutes(router *httprouter.Router, s *mgo.Session) *httprouter.Rout
 	playerController := ctrl.NewPlayerController(s)
 	gameController := ctrl.NewGameController(s, playerController)
 
-	router.POST("/api/init", gameController.Init)
+	router.POST("/api/init", gameController.InitHandler)
 
 	return router
 }

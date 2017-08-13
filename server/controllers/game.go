@@ -14,6 +14,7 @@ import (
 
 	"github.com/NikolovNikolay/bulls-and-cows/server/models"
 	"github.com/NikolovNikolay/bulls-and-cows/server/response"
+	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
 	"github.com/julienschmidt/httprouter"
 	uuid "github.com/nu7hatch/gouuid"
 )
@@ -33,29 +34,23 @@ type initResponse struct {
 	GameSessionID string `json:"gameID"`
 }
 
-// Init initializes a game process
-func (gc GameController) Init(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// InitHandler initializes a game process
+func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	r.ParseForm()
 
 	// Gettings the player's username
 	userName := r.Form.Get("userName")
 	if userName == "" {
 		// if no username is set then we autogenerate one
-		rand.Seed(time.Now().UnixNano())
-		randPostfix := rand.Intn(10000)
-		userName = fmt.Sprintf("user%d", randPostfix)
+		userName = generateUserName()
 	}
 
 	// Searching if a player exists
-	p, err := gc.pc.findPlayerByName(userName)
+	p, err := gc.pc.findPlayerByName(userName, utils.DBName)
 	if err != nil {
 		// if he dows not exist we get an error, then we create it
-		p = models.Player{
-			ID:     bson.NewObjectId(),
-			Name:   userName,
-			Wins:   0,
-			Logged: false}
-		if insErr := gc.pc.createPlayer(p); insErr != nil {
+		p = generateNewPlayer(userName)
+		if insErr := gc.pc.createPlayer(p, utils.DBName); insErr != nil {
 			log.Fatal(insErr)
 		}
 	}
@@ -71,7 +66,7 @@ func (gc GameController) Init(w http.ResponseWriter, r *http.Request, _ httprout
 		p.Logged = true
 
 		// we update the player in the DB as now logged in and continue
-		if e := gc.pc.updatePlayer(p); e != nil {
+		if e := gc.pc.updatePlayer(p, utils.DBName); e != nil {
 			log.Fatal(e)
 		}
 
@@ -86,4 +81,18 @@ func (gc GameController) Init(w http.ResponseWriter, r *http.Request, _ httprout
 
 	w.WriteHeader(response.Status)
 	json.NewEncoder(w).Encode(response)
+}
+
+func generateUserName() string {
+	rand.Seed(time.Now().UnixNano())
+	randPostfix := rand.Intn(10000)
+	return fmt.Sprintf("user%d", randPostfix)
+}
+
+func generateNewPlayer(name string) models.Player {
+	return models.Player{
+		ID:     bson.NewObjectId(),
+		Name:   name,
+		Wins:   0,
+		Logged: false}
 }

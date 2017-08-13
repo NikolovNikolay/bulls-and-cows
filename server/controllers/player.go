@@ -17,23 +17,23 @@ func NewPlayerController(s *mgo.Session) PlayerController {
 	return PlayerController{s}
 }
 
-func (pc *PlayerController) findPlayerByName(name string) (p models.Player, e error) {
-	c := pc.session.DB(utils.DBName).C(utils.DBCPlayers)
+func (pc *PlayerController) findPlayerByName(name, dbName string) (p models.Player, e error) {
+	c := pc.session.DB(dbName).C(utils.DBCPlayers)
 	result := models.Player{}
 	err := c.Find(bson.M{"name": name}).One(&result)
 
 	return result, err
 }
 
-func (pc *PlayerController) createPlayer(p models.Player) (e error) {
-	c := pc.session.DB(utils.DBName).C(utils.DBCPlayers)
+func (pc *PlayerController) createPlayer(p models.Player, dbName string) (e error) {
+	c := pc.session.DB(dbName).C(utils.DBCPlayers)
 	err := c.Insert(p)
 
 	return err
 }
 
-func (pc *PlayerController) updatePlayer(p models.Player) (e error) {
-	c := pc.session.DB(utils.DBName).C(utils.DBCPlayers)
+func (pc *PlayerController) updatePlayer(p models.Player, dbName string) (e error) {
+	c := pc.session.DB(dbName).C(utils.DBCPlayers)
 	err := c.Update(bson.M{"_id": p.ID}, p)
 
 	return err
