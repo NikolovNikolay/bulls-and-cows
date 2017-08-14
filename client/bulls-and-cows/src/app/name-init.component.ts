@@ -30,12 +30,11 @@ export class NameInitComponent implements OnInit {
         this.route.params.subscribe(
             (params: Params) => {
                 this.gameType = params["id"];
+                if (this.gameType == 2) {
+                    this.initGame();
+                }
             }
         );
-
-        if (this.gameType == 2) {
-            this.initGame();
-        }
     }
 
     initGame() {
@@ -53,8 +52,11 @@ export class NameInitComponent implements OnInit {
             (data: any) => {
                 console.log(data);
                 sessionStorage.setItem("gameID", data.p.gameID);
-                sessionStorage.setItem("name", this.name);
+                sessionStorage.setItem("name", data.p.name);
                 sessionStorage.setItem("gameType", gt);
+                if (this.gameType == 2) {
+                    sessionStorage.setItem("guess", data.p.guess);
+                }
                 this.router.navigateByUrl('/play');
             },
             error => {

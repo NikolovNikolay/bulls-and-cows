@@ -44,3 +44,22 @@ func (bc BCCheck) Check(origin, guess int) *BCCheckResult {
 		Bulls: bulls,
 		Cows:  cows}
 }
+
+// ValidateMadeGuess check for a valid user gess input
+func (bc BCCheck) ValidateMadeGuess(gs string) bool {
+	dMap := make(map[byte]int)
+
+	if gs[0] == byte('0') || len(gs) != 4 {
+		return false
+	}
+
+	for i := 0; i < len(gs); i++ {
+		if dMap[gs[i]] > 0 {
+			return false
+		}
+
+		dMap[gs[i]] = dMap[gs[i]] + 1
+	}
+
+	return true
+}

@@ -2,6 +2,7 @@ import { Component, OnInit, Input } from '@angular/core';
 import { ActivatedRoute, ParamMap, Params, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http'
 import { HttpHeaders } from '@angular/common/http'
+import { BCResolver } from "./bc-resolver";
 
 @Component({
     selector: 'play',
@@ -12,8 +13,11 @@ export class PlayComponent implements OnInit {
     private http: HttpClient;
     private route: ActivatedRoute;
     private router: Router;
+    private bcResolver: BCResolver;
     guess: string;
     name: string;
+    greet: string;
+    gameType: string;
 
     constructor(
         http: HttpClient,
@@ -21,9 +25,15 @@ export class PlayComponent implements OnInit {
         router: Router
     ) {
         this.name = sessionStorage.getItem("name");
+        this.gameType = sessionStorage.getItem("gameType");
         this.http = http;
         this.router = router;
         this.route = route;
+        this.greet = `Now we are playing, ${this.name}!`
+        if (this.gameType === "2") {
+            this.bcResolver = new BCResolver();
+            this.greet += ` Your browser is trying to guess ${sessionStorage.getItem("guess")}.`;
+        }
     }
 
     ngOnInit(): void {
@@ -64,21 +74,20 @@ export class PlayComponent implements OnInit {
         document.getElementById("bandc").innerHTML = ''
         document.getElementById("history").innerHTML = '';
 
-        let newP: HTMLParagraphElement = document.createElement("p");
-        if (data.p.win === false && data.p.bc) {
-            newP.innerHTML =
-                `You got: ${data.p.bc.b} Bulls and ${data.p.bc.c} Cows`;
-        } else if (data.p.win === true) {
+        if (data.p.win === true) {
+            let newP: HTMLParagraphElement = document.createElement("p");
             newP.innerHTML =
                 `Congrats, you won! You have 4 Bulls with ${data.p.m[data.p.m.length - 1]}.
                         It took you ${data.p.t} seconds. You can try again if you like :)`;
+            document.getElementById("bandc").appendChild(newP);
         }
-        document.getElementById("bandc").appendChild(newP);
 
-        data.p.m.forEach(m => {
-            let np = document.createElement("p");
-            np.innerHTML = m;
-            document.getElementById("history").appendChild(np);
-        });
+        if (this.gameType != "2") {
+            data.p.m.forEach(m => {
+                let np = document.createElement("p");
+                np.innerHTML = `<strong>${m}</strong> got you ${data.p.bc.b} bulls and ${data.p.bc.c} cows`;
+                document.getElementById("history").appendChild(np);
+            });
+        }
     }
 }

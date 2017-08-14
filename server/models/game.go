@@ -9,7 +9,7 @@ type Game struct {
 	GameID           bson.ObjectId  `json:"gameID" bson:"_id"`
 	StartTime        int64          `josn:"startTime" bson:"startTime"`
 	EndTime          int64          `json:"endTime" bson:"endTime"`
-	GameType         *int           `json:"type" bson:"type"`
+	GameType         int            `json:"type" bson:"type"`
 	PlayerOneID      *bson.ObjectId `json:"playerOne" bson:"playerOne"`
 	PlayerTwoID      *bson.ObjectId `json:"playerTwo" bson:"playerTwo"`
 	PlayerOneGuesses []int          `json:"playerOneGuesses" bson:"playerOneGuesses"`
@@ -20,7 +20,7 @@ type Game struct {
 // NewGame returns a new Game instance
 func NewGame(
 	gameID bson.ObjectId,
-	gameType *int,
+	gameType int,
 	pOneID *bson.ObjectId,
 	pTwoID *bson.ObjectId,
 	guessNum int) (*Game, error) {

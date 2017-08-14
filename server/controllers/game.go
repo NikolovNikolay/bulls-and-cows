@@ -40,6 +40,8 @@ func NewGameController(s *mgo.Session, pc PlayerController) *GameController {
 
 type initPayload struct {
 	GameSessionID string `json:"gameID"`
+	Guess         string `json:"guess"`
+	PlayerName    string `json:"name"`
 }
 
 type gamePayload struct {
@@ -53,6 +55,7 @@ type gamePayload struct {
 func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	r.ParseForm()
 	response := response.New(200, "", nil)
+	payload := &initPayload{}
 
 	// Gettings the player's username
 	userName := r.PostFormValue("userName")
@@ -87,7 +90,9 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 
 	if p.Logged == true {
 		// if the player exists and he is logged in we return forbidden - the new guy can not continue with this name
-		response.Payload = initPayload{GameSessionID: p.LoggedIn.Hex()}
+		payload.GameSessionID = p.LoggedIn.Hex()
+		payload.PlayerName = p.Name
+		response.Payload = payload
 		sendResponse(w, response)
 		return
 	}
@@ -113,7 +118,14 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	response.Payload = initPayload{GameSessionID: g.GameID.Hex()}
+	payload.GameSessionID = g.GameID.Hex()
+	payload.PlayerName = p.Name
+
+	if gt == utils.CVC {
+		payload.Guess = strconv.Itoa(g.GuessNum)
+	}
+
+	response.Payload = payload
 	sendResponse(w, response)
 }
 
@@ -241,7 +253,7 @@ func sendResponse(w http.ResponseWriter, response *response.Response) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func createNewGame(gc GameController, dbName string, gt *int, pID *bson.ObjectId, guessNum int) (*models.Game, error) {
+func createNewGame(gc GameController, dbName string, gt int, pID *bson.ObjectId, guessNum int) (*models.Game, error) {
 	gameID := bson.NewObjectId()
 	game, e := models.NewGame(
 		gameID,
@@ -286,17 +298,17 @@ func getTargetDbName(r *http.Request) string {
 	return utils.DBName
 }
 
-func validateGameTypeParam(r *http.Request) (*int, error) {
+func validateGameTypeParam(r *http.Request) (int, error) {
 	gameType := r.PostFormValue("gameType")
 	if gameType == "" {
-		return nil, errors.New("Missing parameter for game type")
+		return 0, errors.New("Missing parameter for game type")
 	}
 
 	gt, e := strconv.Atoi(gameType)
 	if e != nil {
-		return nil, errors.New("Could not parse game type parameter")
+		return 0, errors.New("Could not parse game type parameter")
 	}
-	return &gt, nil
+	return gt, nil
 }
 
 func validateGuessNumberParam(ps httprouter.Params) (int, error) {
@@ -305,7 +317,7 @@ func validateGuessNumberParam(ps httprouter.Params) (int, error) {
 		return -1, errors.New("Missing parameter guess")
 	}
 
-	if len(g) != 4 || g[0] == byte('0') {
+	if !bcChecker.ValidateMadeGuess(g) {
 		return -1, errors.New("Invalid guess number")
 	}
 
