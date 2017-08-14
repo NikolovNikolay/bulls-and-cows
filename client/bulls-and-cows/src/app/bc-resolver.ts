@@ -3,7 +3,8 @@ export class BCResolver {
     // Represent as position:number
 
     private static get N() { return 4 };
-    public allUniques
+    private allUniques;
+    private workSet;
 
     constructor() {
         this.allUniques = this.genAll(BCResolver.N);
@@ -40,10 +41,11 @@ export class BCResolver {
 
     public getHashTable(s) {
         var hash = [];
+        var _this = this;
         s.forEach(function (num) {
             for (var i = 0; i < 4; i++) {
                 // { pos: i, val: num[i], count: 0 }
-                var res = this.searchInHash(hash, i, num[i])
+                var res = _this.searchInHash(hash, i, num[i])
                 if (res) res.count++
                 else hash.push({ pos: i, val: num[i], count: 1 })
             }
@@ -66,7 +68,7 @@ export class BCResolver {
         console.log(res);
     }
 
-    public makeGuess(s, repeats?) {
+    public generateGuess(s, repeats?) {
         if (s.length == 1)
             return s;
 
@@ -96,7 +98,7 @@ export class BCResolver {
     public respondToNum(num, guess) {
         var response = { bulls: 0, cows: 0 };
         guess.forEach(function (dig, i) {
-            dig = parseFloat(dig)
+            dig = parseFloat(dig) + ""
             if (num.indexOf(dig) !== -1) {
                 if (num.indexOf(dig) == i)
                     response.bulls++
@@ -108,17 +110,12 @@ export class BCResolver {
         return response;
     }
 
-    public pruneSet(set, guess, ans, debug, display, $to) {
-        var response = this.respondToNum(ans, guess);
-        if (debug) console.log(response);
-        if (display) {
-            if (ans.join('') != guess.join(''))
-                $to.append('<div class="bc">Bulls: ' + response.bulls + ' Cows: ' + response.cows + '</div>');
-        }
+    public pruneSet(set, guess, bulls, cows) {
+        let _this = this;
         var pruned = [];
         set.forEach(function (num, pos) {
-            var numRes = this.respondToNum(num, guess)
-            if (numRes.bulls == response.bulls && numRes.cows == response.cows) {
+            var numRes = _this.respondToNum(num, guess)
+            if (numRes.bulls == bulls && numRes.cows == cows) {
                 pruned.push(num)
             }
         });
@@ -130,12 +127,13 @@ export class BCResolver {
 
         var responses = [];
         var uniques = [];
+        let _this = this;
 
-        this.allUniques.forEach(function (number) {
+        _this.allUniques.forEach(function (number) {
             var num = number.split('');
 
             set.forEach(function (n) {
-                var res = this.respondToNum(n, num);
+                var res = _this.respondToNum(n, num);
                 var resStr = 'b' + res.bulls + 'c' + res.cows;
                 responses.push(resStr);
             });
@@ -177,27 +175,22 @@ export class BCResolver {
         console.log(histogram);
     }
 
-    public playSingle(ans, debug, display, $to) {
-        var set2 = this.allUniques.slice();
-        var playedTimes = 0; // Computer repeats the last guess
+    public makeGuess() {
+        this.workSet = this.allUniques.slice();
         var guess;
         var guesses = [];
-        do {
-            guess = this.makeGuess(set2);
-            if (guesses.indexOf(guess.join('')) !== -1) {
-                guess = this.makeGuess(set2, true);
-            }
-            guesses.push(guess.join(''));
-            if (debug) console.log('guess - ', guess.join(''));
 
-            set2 = this.pruneSet(set2, guess, ans, debug, display, $to);
+        guess = this.generateGuess(this.workSet);
+        if (guesses.indexOf(guess.join('')) !== -1) {
+            guess = this.generateGuess(this.workSet, true);
+        }
 
-            if (debug) console.log('set - ', set2.join(' '));
-            playedTimes++;
-        } while ((set2.join('') !== guess.join('') && set2.length) && playedTimes < 50)
+        guesses.push(guess.join(''));
 
+        return guess.join('');
+    }
 
-        console.log(playedTimes + ' guesses for ' + ans.join(''));
-        return playedTimes;
+    public prune(guess, bulls, cows) {
+        this.allUniques = this.pruneSet(this.workSet, this.strNumToArray(guess), bulls, cows);
     }
 }

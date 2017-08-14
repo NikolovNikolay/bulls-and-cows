@@ -1,17 +1,19 @@
 <!--The content below is only a placeholder and can be replaced.-->
-<div style="text-align:center; width: 50%; margin: 0 auto">
+<div id="app-component-container">
   <h1>
     {{title}}
   </h1>
 
-  <div style="text-align:center">
+  <div id="app-component-nav">
     <h3>
-      Please select some of the game options below
+      Please select some of the game following below
     </h3>
-    <ul>
-      <li><a [routerLink]="['/init', 1]" id="ppvc">Player vs. Computer</a></li>
-      <li><a [routerLink]="['/init', 2]" id="pcvc">Browser vs. Computer</a></li>
-    </ul>
+    <nav class="navbar navbar-light bg-faded">
+      <ul>
+        <li><a class="btn btn-outline-danger" [routerLink]="['/init', 1]" id="ppvc">Player vs. Computer</a></li>
+        <li><a class="btn btn-outline-danger" [routerLink]="['/init', 2]" id="pcvc">Browser vs. Computer</a></li>
+      </ul>
+    </nav>
   </div>
 </div>
 <router-outlet></router-outlet>

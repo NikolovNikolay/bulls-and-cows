@@ -1,0 +1,24 @@
+.btn-outline-danger {
+     border-radius: 0; 
+}
+
+#name-input-container {
+    text-align: center;
+    margin: 0 auto;
+    margin-top: 90px;
+    position: relative;
+}
+
+#name-input-container #name-input-container-name-form {
+    width: 300px;
+    margin: 0 auto;
+}
+
+#name-input-container #name-input-container-name-form input {
+    margin-top: 10px;
+}
+
+#name-input-container #name-input-container-name-form input[type="text"] {
+
+    padding: 5px;
+}

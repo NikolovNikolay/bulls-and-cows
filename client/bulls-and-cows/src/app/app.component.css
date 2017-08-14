@@ -1,0 +1,45 @@
+body, html, ul, li {
+    margin: 0;
+    padding: 0;
+}
+
+.btn-outline-danger {
+  border-radius: 0;
+}
+
+#app-component-container{
+  text-align:center; 
+  width: 50%; 
+  margin: 0 auto;
+  margin-top: 50px;
+}
+
+#app-component-nav {
+  margin-top: 30px;
+  text-align:center; 
+}
+
+#app-component-nav ul {
+  list-style-type: none;
+  margin: auto;
+}
+
+#app-component-nav ul li {
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid black;
+}
+
+#app-component-nav ul li:last-child {
+  border-right: none;
+}
+
+#app-component-nav ul li a {
+  color: red;
+  text-decoration: none;
+}
+
+#app-component-nav ul li a:hover {
+  color: white;
+}
+

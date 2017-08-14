@@ -1,5 +1,8 @@
-<div>
-    <h2>Please enter your name</h2>
-    <input [(ngModel)]="name" type="text" />
-    <input type="button" value="Start Game" (click)="initGame()" />
+<div id="name-input-container">
+
+    <h3>Please enter your name</h3>
+    <div id="name-input-container-name-form" class="input-group">
+        <input [(ngModel)]="name" type="text" aria-label="Username" aria-describedby="start-game-btn">
+        <input type="button" (click)="initGame()" class="btn btn-outline-danger" id="start-game-btn " value="Start Game " />
+    </div>
 </div>

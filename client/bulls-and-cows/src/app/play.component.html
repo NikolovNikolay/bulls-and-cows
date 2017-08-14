@@ -1,13 +1,17 @@
-<div>
-    <h2>{{greet}}</h2>
+<div id="play-container">
+    <h3>{{greet}}</h3>
 
-    <div *ngIf='gameType == "1"'>
-        <label for="guess">Make a guess</label>
-        <input [(ngModel)]="guess" id="guess" type="text" />
-        <input type="button" value="Give it a try" (click)="makeGuess()" />
+    <div *ngIf='gameType == "1"' id="play-guess-container">
+        <div id="name-input-container-name-form" class="input-group">
+            <input placeholder="Make a guess" [(ngModel)]="guess" id="guess" type="text" aria-label="Guess" aria-describedby="make-guess-btn"
+            />
+            <input type="button" id="make-guess-btn" class="btn btn-outline-danger" value="Give it a try" (click)="makeGuess()" />
+        </div>
+
+
     </div>
     <div id="results">
-        <p id="bandc"></p>
         <p id="history"></p>
+        <p id="win"></p>
     </div>
 </div>

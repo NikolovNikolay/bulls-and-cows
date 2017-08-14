@@ -1,6 +1,7 @@
 package utils
 
 import "strconv"
+import "fmt"
 
 // BCCheck represents a tool that checks a
 // number for bulls and cows occurances
@@ -23,6 +24,10 @@ func (bc BCCheck) Check(origin, guess int) *BCCheckResult {
 	}
 
 	gStr := strconv.Itoa(guess)
+	if len(gStr) <= 3 {
+
+		gStr = fmt.Sprintf("%s%s", genPrependZeros(len(oStr)-len(gStr)), gStr)
+	}
 	bulls := 0
 	cows := 0
 
@@ -49,7 +54,11 @@ func (bc BCCheck) Check(origin, guess int) *BCCheckResult {
 func (bc BCCheck) ValidateMadeGuess(gs string) bool {
 	dMap := make(map[byte]int)
 
-	if gs[0] == byte('0') || len(gs) != 4 {
+	// if gs[0] == byte('0') || len(gs) != 4 {
+	// 	return false
+	// }
+
+	if len(gs) > 4 {
 		return false
 	}
 
@@ -62,4 +71,13 @@ func (bc BCCheck) ValidateMadeGuess(gs string) bool {
 	}
 
 	return true
+}
+
+func genPrependZeros(len int) string {
+	p := ""
+	for i := 0; i < len; i++ {
+		p = p + "0"
+	}
+
+	return p
 }
