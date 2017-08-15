@@ -6,6 +6,7 @@ import (
 
 	ctrl "github.com/NikolovNikolay/bulls-and-cows/server/controllers"
 	r "github.com/NikolovNikolay/bulls-and-cows/server/router"
+	"github.com/googollee/go-socket.io"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"gopkg.in/mgo.v2"
@@ -15,6 +16,19 @@ func main() {
 	session := initMgoSession()
 	router := configureRoutes(r.New(), session)
 	h := cors.Default().Handler(router)
+
+	server, err := socketio.NewServer(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	server.On("connection", func(so socketio.Socket) {
+		log.Println("on connection")
+	})
+	server.On("error", func(so socketio.Socket, err error) {
+		log.Println("error:", err)
+	})
+	router.Handle("/socket.io/", server)
+
 	log.Fatal(http.ListenAndServe(":8081", h))
 }
 

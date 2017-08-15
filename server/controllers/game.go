@@ -341,4 +341,3 @@ func validateGuessNumberParam(ps map[string]string) (int, error) {
 
 	return strconv.Atoi(g)
 }
-}
