@@ -1,8 +1,10 @@
 package router
 
-import "github.com/julienschmidt/httprouter"
+import (
+	"github.com/gorilla/mux"
+)
 
 // New returns a new router instance
-func New() *httprouter.Router {
-	return httprouter.New()
+func New() *mux.Router {
+	return mux.NewRouter()
 }

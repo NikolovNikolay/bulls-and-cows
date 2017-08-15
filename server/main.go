@@ -6,25 +6,26 @@ import (
 
 	ctrl "github.com/NikolovNikolay/bulls-and-cows/server/controllers"
 	r "github.com/NikolovNikolay/bulls-and-cows/server/router"
-	"github.com/julienschmidt/httprouter"
+	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"gopkg.in/mgo.v2"
 )
 
 func main() {
 	session := initMgoSession()
-	router := r.New()
-	router = configureRoutes(r.New(), session)
+	router := configureRoutes(r.New(), session)
 	h := cors.Default().Handler(router)
 	log.Fatal(http.ListenAndServe(":8081", h))
 }
 
-func configureRoutes(router *httprouter.Router, s *mgo.Session) *httprouter.Router {
+func configureRoutes(router *mux.Router, s *mgo.Session) *mux.Router {
 	playerController := ctrl.NewPlayerController(s)
 	gameController := ctrl.NewGameController(s, playerController)
-	router.POST("/api/init", gameController.InitHandler)
-	router.POST("/api/guess/:guess", gameController.GuessHandler)
-	router.GET("/api/game/:gameID", gameController.GetGameDataHandler)
+
+	router.HandleFunc("/api/init", gameController.InitHandler).Methods("POST")
+	router.HandleFunc("/api/init", gameController.InitHandler).Methods("POST")
+	router.HandleFunc("/api/guess/{guessNum:[0-9]+}", gameController.GuessHandler).Methods("PUT")
+	router.HandleFunc("/api/game/{gameID}", gameController.GetGameDataHandler).Methods("GET")
 
 	return router
 }

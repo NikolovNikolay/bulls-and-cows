@@ -16,7 +16,7 @@ import (
 	"github.com/NikolovNikolay/bulls-and-cows/server/models"
 	"github.com/NikolovNikolay/bulls-and-cows/server/response"
 	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
-	"github.com/julienschmidt/httprouter"
+	"github.com/gorilla/mux"
 )
 
 var numGen utils.NumGen
@@ -27,7 +27,8 @@ func init() {
 	bcChecker = utils.BCCheck{}
 }
 
-// GameController holds methods for managing a game session including http handlers
+// GameController holds methods for managing a
+// game session including http handlers
 type GameController struct {
 	session *mgo.Session
 	pc      PlayerController
@@ -52,10 +53,10 @@ type gamePayload struct {
 }
 
 // InitHandler initializes a game process
-func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	response := response.New(200, "", nil)
-	payload := &initPayload{}
+	dbName := getTargetDbName(r)
 
 	// Gettings the player's username
 	userName := r.PostFormValue("userName")
@@ -72,8 +73,6 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	dbName := getTargetDbName(r)
-
 	// Searching if a player exists
 	p, err := gc.pc.findPlayerByName(userName, utils.DBName)
 	if err != nil {
@@ -88,8 +87,12 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 		}
 	}
 
+	payload := &initPayload{}
 	if p.Logged == true {
-		// if the player exists and he is logged in we return forbidden - the new guy can not continue with this name
+		// If the player is logged to a game, then we
+		// would like to resume. We send the game session id,
+		// so at a later point the front-end can make a
+		// request to download this game's data.
 		payload.GameSessionID = p.LoggedIn.Hex()
 		payload.PlayerName = p.Name
 		response.Payload = payload
@@ -105,11 +108,12 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	// if the player exists and he is not logged in then its ok
+	// if the player exists and he is not logged
+	// in a game then we mark him as now logged
 	p.Logged = true
 	p.LoggedIn = &g.GameID
 
-	// we update the player in the DB as now logged in and continue
+	// we update the player in DB
 	if e := gc.pc.updatePlayer(p, utils.DBName); e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusInternalServerError
@@ -121,6 +125,8 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 	payload.GameSessionID = g.GameID.Hex()
 	payload.PlayerName = p.Name
 
+	// If Comp. vs. Comp mode is selected
+	// we return the generated guess also
 	if gt == utils.CVC {
 		payload.Guess = strconv.Itoa(g.GuessNum)
 	}
@@ -129,11 +135,13 @@ func (gc GameController) InitHandler(w http.ResponseWriter, r *http.Request, _ h
 	sendResponse(w, response)
 }
 
-// GuessHandler takes the player's guess number and returns the following bulls and cows
-func (gc GameController) GuessHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+// GuessHandler takes the player's guess number
+// and returns the following bulls and cows
+func (gc GameController) GuessHandler(w http.ResponseWriter, r *http.Request) {
 	response := response.New(200, "", nil)
 	r.ParseForm()
-	guess, e := validateGuessNumberParam(ps)
+	vars := mux.Vars(r)
+	guess, e := validateGuessNumberParam(vars)
 	if e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusBadRequest
@@ -194,15 +202,20 @@ func (gc GameController) GuessHandler(w http.ResponseWriter, r *http.Request, ps
 		sendResponse(w, response)
 	}
 
-	response.Payload = gamePayload{BC: br, Guesses: g.PlayerOneGuesses, Win: win, Time: t}
+	response.Payload = gamePayload{
+		BC:      br,
+		Guesses: g.PlayerOneGuesses,
+		Win:     win,
+		Time:    t}
 	sendResponse(w, response)
 }
 
 // GetGameDataHandler returns data for a game session
-func (gc GameController) GetGameDataHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (gc GameController) GetGameDataHandler(w http.ResponseWriter, r *http.Request) {
 	response := response.New(200, "", nil)
 	r.ParseForm()
-	gameID := ps.ByName("gameID")
+	vars := mux.Vars(r)
+	gameID := vars["gameID"]
 	if gameID == "" || !bson.IsObjectIdHex(gameID) {
 		response.Status = http.StatusBadRequest
 		response.Error = errors.New("Invalid gameID parameter").Error()
@@ -218,7 +231,11 @@ func (gc GameController) GetGameDataHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	response.Payload = gamePayload{BC: nil, Guesses: g.PlayerOneGuesses, Win: g.EndTime != 0, Time: time.Now().Unix() - g.StartTime}
+	response.Payload = gamePayload{
+		BC:      nil,
+		Guesses: g.PlayerOneGuesses,
+		Win:     g.EndTime != 0,
+		Time:    time.Now().Unix() - g.StartTime}
 	sendResponse(w, response)
 }
 
@@ -312,8 +329,8 @@ func validateGameTypeParam(r *http.Request) (int, error) {
 	return gt, nil
 }
 
-func validateGuessNumberParam(ps httprouter.Params) (int, error) {
-	g := ps.ByName("guess")
+func validateGuessNumberParam(ps map[string]string) (int, error) {
+	g := ps["guessNum"]
 	if g == "" {
 		return -1, errors.New("Missing parameter guess")
 	}
@@ -323,4 +340,5 @@ func validateGuessNumberParam(ps httprouter.Params) (int, error) {
 	}
 
 	return strconv.Atoi(g)
+}
 }
