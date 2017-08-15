@@ -6,8 +6,8 @@ import (
 
 	ctrl "github.com/NikolovNikolay/bulls-and-cows/server/controllers"
 	r "github.com/NikolovNikolay/bulls-and-cows/server/router"
+	"github.com/NikolovNikolay/bulls-and-cows/server/services"
 	"github.com/googollee/go-socket.io"
-	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"gopkg.in/mgo.v2"
 )
@@ -15,33 +15,42 @@ import (
 func main() {
 	session := initMgoSession()
 	router := configureRoutes(r.New(), session)
-	h := cors.Default().Handler(router)
 
-	server, err := socketio.NewServer(nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	server.On("connection", func(so socketio.Socket) {
-		log.Println("on connection")
-	})
-	server.On("error", func(so socketio.Socket, err error) {
-		log.Println("error:", err)
-	})
-	router.Handle("/socket.io/", server)
+	h := cors.New(
+		cors.Options{
+			AllowedMethods:   []string{"POST", "GET", "PUT"},
+			AllowedOrigins:   []string{"http://localhost:4200"},
+			AllowCredentials: true}).Handler(router.R)
+
+	router.R.Handle("/socket.io/", configureSocketIO())
 
 	log.Fatal(http.ListenAndServe(":8081", h))
 }
 
-func configureRoutes(router *mux.Router, s *mgo.Session) *mux.Router {
+func configureSocketIO() *socketio.Server {
+	socket, err := socketio.NewServer(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	socket.On("connection", func(so socketio.Socket) {
+		log.Println("on connection")
+	})
+	socket.On("error", func(so socketio.Socket, err error) {
+		log.Println("error:", err)
+	})
+
+	return socket
+}
+
+func configureRoutes(rt r.BCRouter, s *mgo.Session) r.BCRouter {
 	playerController := ctrl.NewPlayerController(s)
-	gameController := ctrl.NewGameController(s, playerController)
+	gc := ctrl.NewGameController(s, playerController)
 
-	router.HandleFunc("/api/init", gameController.InitHandler).Methods("POST")
-	router.HandleFunc("/api/init", gameController.InitHandler).Methods("POST")
-	router.HandleFunc("/api/guess/{guessNum:[0-9]+}", gameController.GuessHandler).Methods("PUT")
-	router.HandleFunc("/api/game/{gameID}", gameController.GetGameDataHandler).Methods("GET")
+	rt.RegisterService(services.NewInitService(gc))
+	rt.RegisterService(services.NewGuessService(gc))
+	rt.RegisterService(services.NewGetGameService(gc))
 
-	return router
+	return rt
 }
 
 func initMgoSession() *mgo.Session {

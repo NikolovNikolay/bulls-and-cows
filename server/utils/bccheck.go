@@ -54,10 +54,6 @@ func (bc BCCheck) Check(origin, guess int) *BCCheckResult {
 func (bc BCCheck) ValidateMadeGuess(gs string) bool {
 	dMap := make(map[byte]int)
 
-	// if gs[0] == byte('0') || len(gs) != 4 {
-	// 	return false
-	// }
-
 	if len(gs) > 4 {
 		return false
 	}

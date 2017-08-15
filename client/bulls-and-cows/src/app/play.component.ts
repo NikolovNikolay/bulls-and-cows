@@ -15,7 +15,7 @@ export class PlayComponent implements OnInit {
     private route: ActivatedRoute;
     private router: Router;
     private engine: any;
-	pattern = /^\d+$/;
+    pattern = /^\d+$/;
     guess: string;
     name: string;
     greet: string;
@@ -32,7 +32,7 @@ export class PlayComponent implements OnInit {
         this.router = router;
         this.route = route;
         this.greet = `Now we are playing, ${this.name}!`;
-       
+        io('http://localhost:8081/')
         if (this.gameType === "2") {
             this.greet += ` Your browser is trying to guess ${sessionStorage.getItem("guess")}.`;
             this.startAutoPlay();
@@ -57,12 +57,12 @@ export class PlayComponent implements OnInit {
         if (this.guess.length < 4) {
             this.guess = this.genPrepZeroes(this.guess);
         }
-		
+
         return new Promise(
             (resolve: (res: { bulls, cows, win }) => void, reject: (res: boolean) => void) => {
-                __this.http.post(
+                __this.http.put(
                     `http://localhost:8081/api/guess/${this.guess}`,
-                                        `X-GameID=${sessionStorage.getItem('gameID')}`,
+                    `gameID=${sessionStorage.getItem('gameID')}`,
                     { headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded') }
 
                 )

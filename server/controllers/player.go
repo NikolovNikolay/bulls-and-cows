@@ -19,7 +19,8 @@ func NewPlayerController(s *mgo.Session) PlayerController {
 	return PlayerController{s}
 }
 
-func (pc *PlayerController) findPlayerByName(name, dbName string) (p models.Player, e error) {
+// FindPlayerByName finds a player by name in DB
+func (pc *PlayerController) FindPlayerByName(name, dbName string) (p models.Player, e error) {
 	c := pc.session.DB(dbName).C(utils.DBCPlayers)
 	result := models.Player{}
 	err := c.Find(bson.M{"name": name}).One(&result)
@@ -27,7 +28,8 @@ func (pc *PlayerController) findPlayerByName(name, dbName string) (p models.Play
 	return result, err
 }
 
-func (pc *PlayerController) findPlayerByID(id, dbName string) (p models.Player, e error) {
+// FindPlayerByID finds a player by its ID in DB
+func (pc *PlayerController) FindPlayerByID(id, dbName string) (p models.Player, e error) {
 	result := models.Player{}
 	if bson.IsObjectIdHex(id) {
 		c := pc.session.DB(dbName).C(utils.DBCPlayers)
@@ -39,14 +41,16 @@ func (pc *PlayerController) findPlayerByID(id, dbName string) (p models.Player, 
 	return result, errors.New("Invalid player id")
 }
 
-func (pc *PlayerController) createPlayer(p models.Player, dbName string) (e error) {
+// CreatePlayer creates a player in the DB
+func (pc *PlayerController) CreatePlayer(p models.Player, dbName string) (e error) {
 	c := pc.session.DB(dbName).C(utils.DBCPlayers)
 	err := c.Insert(p)
 
 	return err
 }
 
-func (pc *PlayerController) updatePlayer(p models.Player, dbName string) (e error) {
+// UpdatePlayer updates a player in the DB
+func (pc *PlayerController) UpdatePlayer(p models.Player, dbName string) (e error) {
 	c := pc.session.DB(dbName).C(utils.DBCPlayers)
 	err := c.Update(bson.M{"_id": p.ID}, p)
 
