@@ -1,20 +1,30 @@
 package models
 
-import "gopkg.in/mgo.v2/bson"
-import "errors"
-import "time"
+import (
+	"errors"
+	"time"
+
+	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
+	"gopkg.in/mgo.v2/bson"
+)
 
 // Game represents a games session
 type Game struct {
-	GameID           bson.ObjectId  `json:"gameID" bson:"_id"`
-	StartTime        int64          `josn:"startTime" bson:"startTime"`
-	EndTime          int64          `json:"endTime" bson:"endTime"`
-	GameType         int            `json:"type" bson:"type"`
-	PlayerOneID      *bson.ObjectId `json:"playerOne" bson:"playerOne"`
-	PlayerTwoID      *bson.ObjectId `json:"playerTwo" bson:"playerTwo"`
-	PlayerOneGuesses []int          `json:"playerOneGuesses" bson:"playerOneGuesses"`
-	PlayerTwoGuesses []int          `json:"playerTwoGuesses" bson:"playerTwoGuesses"`
-	GuessNum         int            `json:"guess" bson:"guess"`
+	GameID           bson.ObjectId    `json:"gameID" bson:"_id"`
+	StartTime        int64            `josn:"startTime" bson:"startTime"`
+	EndTime          int64            `json:"endTime" bson:"endTime"`
+	GameType         int              `json:"type" bson:"type"`
+	PlayerOneID      *bson.ObjectId   `json:"playerOne" bson:"playerOne"`
+	PlayerTwoID      *bson.ObjectId   `json:"playerTwo" bson:"playerTwo"`
+	PlayerOneGuesses []GuessDBContent `json:"playerOneGuesses" bson:"playerOneGuesses"`
+	PlayerTwoGuesses []GuessDBContent `json:"playerTwoGuesses" bson:"playerTwoGuesses"`
+	GuessNum         int              `json:"guess" bson:"guess"`
+}
+
+// GuessDBContent represents a guess, stored in the game object
+type GuessDBContent struct {
+	Guess int                  `json:"g"`
+	Bc    *utils.BCCheckResult `json:"bc"`
 }
 
 // NewGame returns a new Game instance

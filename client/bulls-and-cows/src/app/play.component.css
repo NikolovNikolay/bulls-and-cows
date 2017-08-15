@@ -26,7 +26,3 @@
 #play-container #play-guess-container input[type="text"] {
     padding: 5px;
 }
-
-.play-guess-res {
-    font-size: 1.2em;
-}

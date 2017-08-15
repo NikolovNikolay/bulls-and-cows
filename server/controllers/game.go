@@ -45,10 +45,10 @@ type initPayload struct {
 }
 
 type gamePayload struct {
-	BC      *utils.BCCheckResult `json:"bc"`
-	Guesses []int                `json:"m"`
-	Win     bool                 `json:"win"`
-	Time    int64                `json:"t"`
+	BC      *utils.BCCheckResult    `json:"bc"`
+	Guesses []models.GuessDBContent `json:"m"`
+	Win     bool                    `json:"win"`
+	Time    int64                   `json:"t"`
 }
 
 // InitHandler initializes a game process
@@ -169,7 +169,8 @@ func (gc GameController) GuessHandler(w http.ResponseWriter, r *http.Request, ps
 	}
 
 	br := bcChecker.Check(g.GuessNum, guess)
-	guesses := append(g.PlayerOneGuesses, []int{guess}...)
+	dbGuess := models.GuessDBContent{Guess: guess, Bc: br}
+	guesses := append(g.PlayerOneGuesses, []models.GuessDBContent{dbGuess}...)
 
 	g.PlayerOneGuesses = guesses
 

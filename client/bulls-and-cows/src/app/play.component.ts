@@ -3,6 +3,7 @@ import { ActivatedRoute, ParamMap, Params, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http'
 import { HttpHeaders } from '@angular/common/http'
 import { BCResolver } from "./bc-resolver";
+import * as io from 'socket.io-client';
 
 @Component({
     selector: 'play',
@@ -30,7 +31,7 @@ export class PlayComponent implements OnInit {
         this.router = router;
         this.route = route;
         this.greet = `Now we are playing, ${this.name}!`;
-
+       
         if (this.gameType === "2") {
             this.greet += ` Your browser is trying to guess ${sessionStorage.getItem("guess")}.`;
             this.startAutoPlay();
@@ -57,10 +58,10 @@ export class PlayComponent implements OnInit {
         }
         return new Promise(
             (resolve: (res: { bulls, cows, win }) => void, reject: (res: boolean) => void) => {
-                __this.http.post(
+                __this.http.put(
                     `http://localhost:8081/api/guess/${this.guess}`,
-                    `X-GameID=${sessionStorage.getItem('gameID')}`,
-                    { headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded') }
+                    {a:0},
+                    { headers: new HttpHeaders().set('Content-Type', 'application/json') }
                 )
                     .subscribe(
                     (data: any) => {
@@ -118,16 +119,28 @@ export class PlayComponent implements OnInit {
                 document.getElementById("win").appendChild(newP);
             }
 
-            let np = document.createElement("p");
-            var style = document.createElement('style');
-            style.type = 'text/css';
-            style.innerHTML = '.strong { color: red; }';
-            np.innerHTML = `<strong>${this.guess}</strong> got you <strong>${data.p.bc.b}</strong> bulls and <strong>${data.p.bc.c}</strong> cows`;
-            np.className = "play-guess-res"
-            document.getElementById("history").appendChild(np);
+            if (data.p.bc == null) {
+                data.p.m.forEach(g => {
+                    let np = this.genHistoryElement();
+                    np.innerHTML = `<strong>${g.g}</strong> got you <strong>${g.bc.b}</strong> bulls and <strong>${g.bc.c}</strong> cows`;
+                    document.getElementById("history").appendChild(np);
+                });
+            } else {
+                let np = this.genHistoryElement();
+                np.innerHTML = `<strong>${this.guess}</strong> got you <strong>${data.p.bc.b}</strong> bulls and <strong>${data.p.bc.c}</strong> cows`;
+                document.getElementById("history").appendChild(np);
+            }
+
         } catch (e) {
 
         }
+    }
+
+    private genHistoryElement(): HTMLParagraphElement {
+        let np = document.createElement("p");
+        np.className = "play-guess-res";
+
+        return np;
     }
 
     private genPrepZeroes(guess) {
