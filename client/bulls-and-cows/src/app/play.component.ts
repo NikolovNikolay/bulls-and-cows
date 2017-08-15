@@ -15,6 +15,7 @@ export class PlayComponent implements OnInit {
     private route: ActivatedRoute;
     private router: Router;
     private engine: any;
+	pattern = /^\d+$/;
     guess: string;
     name: string;
     greet: string;
@@ -56,12 +57,14 @@ export class PlayComponent implements OnInit {
         if (this.guess.length < 4) {
             this.guess = this.genPrepZeroes(this.guess);
         }
+		
         return new Promise(
             (resolve: (res: { bulls, cows, win }) => void, reject: (res: boolean) => void) => {
-                __this.http.put(
+                __this.http.post(
                     `http://localhost:8081/api/guess/${this.guess}`,
-                    {a:0},
-                    { headers: new HttpHeaders().set('Content-Type', 'application/json') }
+                                        `X-GameID=${sessionStorage.getItem('gameID')}`,
+                    { headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded') }
+
                 )
                     .subscribe(
                     (data: any) => {

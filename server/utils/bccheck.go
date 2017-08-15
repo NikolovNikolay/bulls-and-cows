@@ -63,6 +63,9 @@ func (bc BCCheck) ValidateMadeGuess(gs string) bool {
 	}
 
 	for i := 0; i < len(gs); i++ {
+		if gs[i] < byte('0') || gs[i] > byte('9') {
+			return false
+		}
 		if dMap[gs[i]] > 0 {
 			return false
 		}
