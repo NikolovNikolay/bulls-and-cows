@@ -6,8 +6,8 @@ import (
 
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/models"
-	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/models"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	"github.com/googollee/go-socket.io"
 )
 

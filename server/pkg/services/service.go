@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/response"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
 )
 
 // Servicer represents a service executing
