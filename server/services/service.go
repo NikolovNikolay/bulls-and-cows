@@ -7,9 +7,9 @@ import (
 	"github.com/NikolovNikolay/bulls-and-cows/server/response"
 )
 
-// Service represents a service executing
+// Servicer represents a service executing
 // some logic with a handler
-type Service interface {
+type Servicer interface {
 	Method() string
 	Endpoint() string
 	Handle(w http.ResponseWriter, response *http.Request)
