@@ -89,7 +89,7 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	br := gs.bcChecker.Check(g.GuessNum, uGuess)
-	dbGuess := guess.Guess{Guess: uGuess, Bc: br}
+	dbGuess := guess.New(uGuess, br.Bulls, br.Cows)
 	guesses := append(g.PlayerOneGuesses, []guess.Guess{dbGuess}...)
 
 	g.PlayerOneGuesses = guesses

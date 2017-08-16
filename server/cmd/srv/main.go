@@ -40,7 +40,6 @@ func configureRoutes(rt r.BCRouter, s *mgo.Session) r.BCRouter {
 	if e != nil {
 		panic(e)
 	}
-	// sc := socket.New() ctrl.NewSocketController(ss, gc, pc)
 
 	rt.RegisterService(services.NewInitService(s))
 	rt.RegisterService(services.NewGuessService(s))
