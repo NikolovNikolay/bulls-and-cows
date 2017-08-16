@@ -9,19 +9,20 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/controllers"
+	"gopkg.in/mgo.v2"
 
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/models"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/game"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 )
 
 // InitService initiates a new game and player in DB
 type InitService struct {
-	gameControler controllers.GameController
-	numGen        utils.NumGen
+	numGen utils.NumGen
+	db     *mgo.Session
 }
 
 type initPayload struct {
@@ -31,8 +32,10 @@ type initPayload struct {
 }
 
 // NewInitService returns a new instance of InitService
-func NewInitService(gc controllers.GameController) InitService {
-	return InitService{gameControler: gc, numGen: utils.GetNumGen()}
+func NewInitService(db *mgo.Session) InitService {
+	return InitService{
+		numGen: utils.GetNumGen(),
+		db:     db}
 }
 
 // Endpoint returns the endpoint of the service
@@ -47,8 +50,13 @@ func (is InitService) Method() string {
 
 // Handle is the handle function used to register in the mux
 func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
 	response := response.New(200, "", nil)
+	if e := r.ParseForm(); e != nil {
+		response.Error = e.Error()
+		response.Status = http.StatusBadRequest
+		DefSendResponseBeh(w, response)
+	}
+
 	dbName := getTargetDbName(r)
 
 	// Gettings the player's username
@@ -67,11 +75,15 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Searching if a player exists
-	p, err := is.gameControler.Pc.FindPlayerByName(userName, utils.DBName)
+	p, err := player.FindByName(userName, utils.DBName, is.db)
 	if err != nil {
 		// if he dows not exist we get an error, then we create it
-		p = generateNewPlayer(userName)
-		if insErr := is.gameControler.Pc.CreatePlayer(p, utils.DBName); insErr != nil {
+		p = player.New(
+			bson.NewObjectId(),
+			userName,
+			false)
+
+		if insErr := player.AddToDB(p, utils.DBName, is.db); insErr != nil {
 			log.Fatal(insErr)
 			response.Status = http.StatusInternalServerError
 			response.Error = insErr.Error()
@@ -93,7 +105,7 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, e := is.gameControler.CreateNewGame(dbName, gt, &p.ID, is.numGen.Gen())
+	g, e := game.AddToDb(dbName, gt, &p.ID, is.numGen.Gen(), is.db)
 	if e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusBadRequest
@@ -107,7 +119,7 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 	p.LoggedIn = &g.GameID
 
 	// we update the player in DB
-	if e := is.gameControler.Pc.UpdatePlayer(p, utils.DBName); e != nil {
+	if e := player.Update(p, utils.DBName, is.db); e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusInternalServerError
 		log.Fatal(e)
@@ -134,8 +146,8 @@ func generateUserName() string {
 	return fmt.Sprintf("user%d", randPostfix)
 }
 
-func generateNewPlayer(name string) models.Player {
-	return models.Player{
+func generateNewPlayer(name string) player.Player {
+	return player.Player{
 		ID:       bson.NewObjectId(),
 		Name:     name,
 		Logged:   false,

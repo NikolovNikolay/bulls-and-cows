@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
@@ -18,5 +19,8 @@ type Servicer interface {
 // DefSendResponseBeh is the common send response behaviour
 func DefSendResponseBeh(w http.ResponseWriter, response *response.Response) {
 	w.WriteHeader(response.Status)
-	json.NewEncoder(w).Encode(response)
+	if e := json.NewEncoder(w).Encode(response); e != nil {
+		log.Println(e)
+	}
+
 }
