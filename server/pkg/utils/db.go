@@ -6,8 +6,19 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
-// InitMongo initializes a mongo db connection
-func InitMongo() *mgo.Session {
+var session *mgo.Session
+
+func init() {
+	session = initMongo()
+}
+
+// GetDBSession returns the initialized DB session
+func GetDBSession() *mgo.Session {
+	return session
+}
+
+// initMongo initializes a mongo db connection
+func initMongo() *mgo.Session {
 	session, err := mgo.Dial("mongodb://localhost")
 
 	if err != nil {

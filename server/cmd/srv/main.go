@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	ctrl "github.com/NikolovNikolay/bulls-and-cows/server/pkg/controllers"
 	r "github.com/NikolovNikolay/bulls-and-cows/server/pkg/router"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/services"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/socket"
 	u "github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	"github.com/googollee/go-socket.io"
 	"github.com/rs/cors"
@@ -14,12 +14,12 @@ import (
 )
 
 const (
-	servePort    = "8080"
+	servePort    = ":8080"
 	clientOrigin = "http://localhost:4200"
 )
 
 func main() {
-	db := u.InitMongo()
+	db := u.GetDBSession()
 	router := configureRoutes(r.New(), db)
 
 	h := cors.New(
@@ -32,18 +32,20 @@ func main() {
 }
 
 func configureRoutes(rt r.BCRouter, s *mgo.Session) r.BCRouter {
-	pc := ctrl.NewPlayerController(s)
-	gc := ctrl.NewGameController(s, pc)
+
 	ss, e := socketio.NewServer(nil)
+	ws := socket.New(ss, s)
+	ws.Init()
+
 	if e != nil {
 		panic(e)
 	}
-	sc := ctrl.NewSocketController(ss, gc, pc)
+	// sc := socket.New() ctrl.NewSocketController(ss, gc, pc)
 
-	rt.RegisterService(services.NewInitService(gc))
-	rt.RegisterService(services.NewGuessService(gc))
-	rt.RegisterService(services.NewGetGameService(gc))
-	rt.R.Handle(ctrl.SockIoEndpoint, sc.Socket)
+	rt.RegisterService(services.NewInitService(s))
+	rt.RegisterService(services.NewGuessService(s))
+	rt.RegisterService(services.NewGetGameService(s))
+	rt.R.Handle(socket.SockIoEndpoint, ws.Socket)
 
 	return rt
 }

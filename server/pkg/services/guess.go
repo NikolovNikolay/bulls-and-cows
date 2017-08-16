@@ -6,8 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/controllers"
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/models"
+	"gopkg.in/mgo.v2"
+
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/game"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/guess"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	"github.com/gorilla/mux"
@@ -17,21 +20,23 @@ import (
 // that contains how many bulls and cows
 // his number has
 type GuessService struct {
-	gameControler controllers.GameController
-	bcChecker     utils.BCCheck
+	bcChecker utils.BCCheck
+	db        *mgo.Session
 }
 
 // GuessPayload is the payload of the GuessService
 type GuessPayload struct {
-	BC      *utils.BCCheckResult    `json:"bc"`
-	Guesses []models.GuessDBContent `json:"m"`
-	Win     bool                    `json:"win"`
-	Time    int64                   `json:"t"`
+	BC      *utils.BCCheckResult `json:"bc"`
+	Guesses []guess.Guess        `json:"m"`
+	Win     bool                 `json:"win"`
+	Time    int64                `json:"t"`
 }
 
 // NewGuessService returns a new instance of GuessService
-func NewGuessService(gc controllers.GameController) GuessService {
-	return GuessService{gameControler: gc, bcChecker: utils.BCCheck{}}
+func NewGuessService(db *mgo.Session) GuessService {
+	return GuessService{
+		bcChecker: utils.BCCheck{},
+		db:        db}
 }
 
 // Endpoint returns the endpoint of the service
@@ -47,9 +52,8 @@ func (gs GuessService) Method() string {
 // Handle is the handle function used to register in the mux
 func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	response := response.New(200, "", nil)
-	r.ParseForm()
 	vars := mux.Vars(r)
-	guess, e := gs.validateGuessNumberParam(vars)
+	uGuess, e := gs.validateGuessNumberParam(vars)
 	if e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusBadRequest
@@ -66,7 +70,7 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, e := gs.gameControler.GetGameByID(gID, dbName)
+	g, e := game.FindByID(gID, dbName, gs.db)
 	if e != nil || g.StartTime == 0 {
 		response.Error = "Not a valid guess - not referring to a game"
 		response.Status = http.StatusBadRequest
@@ -84,9 +88,9 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	br := gs.bcChecker.Check(g.GuessNum, guess)
-	dbGuess := models.GuessDBContent{Guess: guess, Bc: br}
-	guesses := append(g.PlayerOneGuesses, []models.GuessDBContent{dbGuess}...)
+	br := gs.bcChecker.Check(g.GuessNum, uGuess)
+	dbGuess := guess.Guess{Guess: uGuess, Bc: br}
+	guesses := append(g.PlayerOneGuesses, []guess.Guess{dbGuess}...)
 
 	g.PlayerOneGuesses = guesses
 
@@ -97,13 +101,13 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	if br.Bulls == 4 {
 		win = true
 		g.EndTime = now
-		p, _ := gs.gameControler.Pc.FindPlayerByID(g.PlayerOneID.Hex(), dbName)
+		p, _ := player.FindByID(g.PlayerOneID.Hex(), dbName, gs.db)
 		p.Logged = false
 		p.LoggedIn = nil
-		e = gs.gameControler.Pc.UpdatePlayer(p, dbName)
+		e = player.Update(p, dbName, gs.db)
 	}
 
-	e = gs.gameControler.UpdateGameByID(g, dbName)
+	e = game.UpdateByID(g, dbName, gs.db)
 	if e != nil {
 		response.Status = http.StatusInternalServerError
 		response.Error = e.Error()
