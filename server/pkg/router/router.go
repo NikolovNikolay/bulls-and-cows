@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/NikolovNikolay/bulls-and-cows/server/services"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/services"
 	"github.com/gorilla/mux"
 )
 

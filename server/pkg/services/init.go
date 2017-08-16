@@ -9,13 +9,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/controllers"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/controllers"
 
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/models"
-	"github.com/NikolovNikolay/bulls-and-cows/server/response"
-	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/models"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 )
 
 // InitService initiates a new game and player in DB

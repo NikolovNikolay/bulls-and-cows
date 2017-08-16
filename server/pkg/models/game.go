@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	"gopkg.in/mgo.v2/bson"
 )
 
