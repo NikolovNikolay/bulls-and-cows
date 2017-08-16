@@ -3,8 +3,8 @@ package controllers
 import (
 	"errors"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/models"
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
+	"github.com/NikolovNikolay/bulls-and-cows/server/models"
+	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )

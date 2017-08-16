@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/controllers"
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
+	"github.com/NikolovNikolay/bulls-and-cows/server/controllers"
+	"github.com/NikolovNikolay/bulls-and-cows/server/response"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
 )

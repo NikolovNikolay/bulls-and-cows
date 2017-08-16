@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/controllers"
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/models"
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
+	"github.com/NikolovNikolay/bulls-and-cows/server/controllers"
+	"github.com/NikolovNikolay/bulls-and-cows/server/models"
+	"github.com/NikolovNikolay/bulls-and-cows/server/response"
+	"github.com/NikolovNikolay/bulls-and-cows/server/utils"
 	"github.com/gorilla/mux"
 )
 
