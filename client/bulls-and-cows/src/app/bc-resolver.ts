@@ -95,7 +95,7 @@ export class BCResolver {
     }
 
 
-    public respondToNum(num, guess) {
+    public respondToNum(num, guess) { // num is string, guess is number[]
         var response = { bulls: 0, cows: 0 };
         guess.forEach(function (dig, i) {
             dig = parseFloat(dig) + ""

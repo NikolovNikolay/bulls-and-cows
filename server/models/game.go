@@ -19,6 +19,7 @@ type Game struct {
 	PlayerOneGuesses []GuessDBContent `json:"playerOneGuesses" bson:"playerOneGuesses"`
 	PlayerTwoGuesses []GuessDBContent `json:"playerTwoGuesses" bson:"playerTwoGuesses"`
 	GuessNum         int              `json:"guess" bson:"guess"`
+	GuessNumSec      int              `json:"guessSec" bson:"guessSec"`
 }
 
 // GuessDBContent represents a guess, stored in the game object
@@ -33,7 +34,8 @@ func NewGame(
 	gameType int,
 	pOneID *bson.ObjectId,
 	pTwoID *bson.ObjectId,
-	guessNum int) (*Game, error) {
+	guessNum int,
+	guessNumSec int) (*Game, error) {
 
 	if pOneID == nil {
 		return nil, errors.New("Player one is required")
@@ -47,6 +49,7 @@ func NewGame(
 		PlayerOneGuesses: nil,
 		PlayerTwoGuesses: nil,
 		GuessNum:         guessNum,
+		GuessNumSec:      guessNumSec,
 		StartTime:        time.Now().Unix()}
 
 	return game, nil

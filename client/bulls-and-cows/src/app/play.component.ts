@@ -15,41 +15,80 @@ export class PlayComponent implements OnInit {
     private route: ActivatedRoute;
     private router: Router;
     private engine: any;
+    private socket: any;
+    private clientSock: any;
+
     pattern = /^\d+$/;
     guess: string;
     name: string;
     greet: string;
     gameType: string;
+    doubleJoin: boolean;
+    join: boolean;
 
     constructor(
         http: HttpClient,
         route: ActivatedRoute,
         router: Router
     ) {
+        let __this = this;
         this.name = sessionStorage.getItem("name");
         this.gameType = sessionStorage.getItem("gameType");
         this.http = http;
         this.router = router;
         this.route = route;
-        this.greet = `Now we are playing, ${this.name}!`;
-        io('http://localhost:8081/')
-        if (this.gameType === "2") {
+        this.doubleJoin = false;
+        this.join = false;
+
+        if (this.gameType === "1") {
+            this.greet = `Now we are playing, ${this.name}!`;
+        } else if (this.gameType === "2") {
             this.greet += ` Your browser is trying to guess ${sessionStorage.getItem("guess")}.`;
             this.startAutoPlay();
+        } else if (this.gameType === "3") {
+            this.greet = `Welcome, ${this.name}`;
+            this.socket = io('http://localhost:8080/socket.io');
+            this.socket.on('connect', function () {
+                __this.socket = this;
+                __this.socket.emit("getavr", __this.name, (rooms) => {
+                    __this.appendRooms(rooms);
+                });
+                __this.socket.on("joinmy", function (rival) {
+                    __this.greet = `Now we are playing, ${__this.name}! Your rival is ${rival}.`;
+                    __this.join = true;
+                });
+                __this.socket.on("updater", function (rooms) {
+                    __this.appendRooms(rooms);
+                });
+                __this.socket.on("confjoin", function () {
+                    __this.confirmJoin();
+                });
+            });
         }
     }
 
     ngOnInit(): void {
-        this.http.get(
-            `http://localhost:8081/api/game/${sessionStorage.getItem("gameID")}`
-        )
-            .subscribe(
-            (data: any) => {
-                this.handleGameResponse(data);
-            },
-            error => {
-                this.handleError(error);
-            });
+        if (this.gameType !== "3") {
+            this.http.get(
+                `http://localhost:8080/api/game/${sessionStorage.getItem("gameID")}`
+            )
+                .subscribe(
+                (data: any) => {
+                    this.handleGameResponse(data);
+                },
+                error => {
+                    this.handleError(error);
+                });
+        }
+    }
+
+    private appendRooms(rooms) {
+        rooms.forEach(r => {
+            if (r === "") return;
+            let newP = document.createElement('p')
+            newP.innerHTML = r;
+            document.getElementById('active-games').appendChild(newP)
+        });
     }
 
     makeGuess(): Promise<{ bulls, cows, win }> {
@@ -61,7 +100,7 @@ export class PlayComponent implements OnInit {
         return new Promise(
             (resolve: (res: { bulls, cows, win }) => void, reject: (res: boolean) => void) => {
                 __this.http.put(
-                    `http://localhost:8081/api/guess/${this.guess}`,
+                    `http://localhost:8080/api/guess/${this.guess}`,
                     `gameID=${sessionStorage.getItem('gameID')}`,
                     { headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded') }
 
@@ -105,6 +144,50 @@ export class PlayComponent implements OnInit {
         };
     }
 
+    public prepareHost() {
+        this.socket.emit("creater", this.name, (data) => {
+            console.log(data);
+            if (data) {
+                document.getElementById('play-guess-container').innerHTML = '';
+                this.greet = `${this.name}, you are waiting for someone to join`;
+            } else {
+                console.log('It seems that you have already hosted a game');
+            }
+        });
+    }
+
+    public prepareJoin() {
+        let roomName = prompt("Please input the name of your rival");
+        this.socket.emit("joinr", roomName, this.name, (data) => {
+            console.log(data);
+            if (data) {
+
+                document.getElementById('p2p-btns').innerHTML = '';
+                document.getElementById('active-games').innerHTML = '';
+                this.greet = `Now we are playing, ${this.name}! Your rival is ${roomName}`;
+                this.join = true;
+            } else {
+                console.log('Could not join the game. Sorry...');
+            }
+        });
+    }
+
+    public confirmJoin() {
+        this.join = true;
+    }
+
+    public inputGuess() {
+        this.socket.emit("inputguess", this.guess, this.name, (data) => {
+            // console.log(data);
+            // if (data) {
+            //     document.getElementById('play-guess-container').innerHTML = '';
+            //     this.greet = `${this.name}, you are waiting for someone to join`;
+            // } else {
+            //     console.log('It seems that you have already hosted a game');
+            // }
+        });
+    }
+
     private handleError(e) {
         if (e.error) {
             alert(e.error.e)
@@ -133,7 +216,6 @@ export class PlayComponent implements OnInit {
                 np.innerHTML = `<strong>${this.guess}</strong> got you <strong>${data.p.bc.b}</strong> bulls and <strong>${data.p.bc.c}</strong> cows`;
                 document.getElementById("history").appendChild(np);
             }
-
         } catch (e) {
 
         }

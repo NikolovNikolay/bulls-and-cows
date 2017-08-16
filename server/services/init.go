@@ -20,7 +20,7 @@ import (
 
 // InitService initiates a new game and player in DB
 type InitService struct {
-	gameControler *controllers.GameController
+	gameControler controllers.GameController
 	numGen        utils.NumGen
 }
 
@@ -31,7 +31,7 @@ type initPayload struct {
 }
 
 // NewInitService returns a new instance of InitService
-func NewInitService(gc *controllers.GameController) InitService {
+func NewInitService(gc controllers.GameController) InitService {
 	return InitService{gameControler: gc, numGen: utils.GetNumGen()}
 }
 
@@ -93,7 +93,7 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, e := createNewGame(is.gameControler, dbName, gt, &p.ID, is.numGen.Gen())
+	g, e := is.gameControler.CreateNewGame(dbName, gt, &p.ID, is.numGen.Gen())
 	if e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusBadRequest
@@ -128,32 +128,6 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 	DefSendResponseBeh(w, response)
 }
 
-func createNewGame(
-	gc *controllers.GameController,
-	dbName string,
-	gt int,
-	pID *bson.ObjectId,
-	guessNum int) (*models.Game, error) {
-
-	gameID := bson.NewObjectId()
-	game, e := models.NewGame(
-		gameID,
-		gt,
-		pID,
-		nil,
-		guessNum)
-
-	if e != nil {
-		return nil, e
-	}
-
-	if er := gc.Session.DB(dbName).C(utils.DBCGames).Insert(game); er != nil {
-		return nil, er
-	}
-
-	return game, nil
-}
-
 func generateUserName() string {
 	rand.Seed(time.Now().UnixNano())
 	randPostfix := rand.Intn(10000)
@@ -164,7 +138,6 @@ func generateNewPlayer(name string) models.Player {
 	return models.Player{
 		ID:       bson.NewObjectId(),
 		Name:     name,
-		Wins:     0,
 		Logged:   false,
 		LoggedIn: nil}
 }

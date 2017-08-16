@@ -39,12 +39,16 @@ export class NameInitComponent implements OnInit {
 
     initGame() {
         let gt = this.gameType + "";
+
+        if (gt === "3") {
+            return this.proceedNext(null);
+        }
         let s = new URLSearchParams();
         s.append("userName", this.name);
         s.append("gameType", gt);
 
         this.http.post(
-            "http://localhost:8081/api/init",
+            "http://localhost:8080/api/init",
             `userName=${this.name}&gameType=${this.gameType}`,
             { headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded') }
         )
@@ -52,15 +56,19 @@ export class NameInitComponent implements OnInit {
             (data: any) => {
                 console.log(data);
                 sessionStorage.setItem("gameID", data.p.gameID);
-                sessionStorage.setItem("name", data.p.name);
-                sessionStorage.setItem("gameType", gt);
-                if (this.gameType == 2) {
-                    sessionStorage.setItem("guess", data.p.guess);
-                }
-                this.router.navigateByUrl('/play');
+                this.proceedNext(data)
             },
             error => {
                 console.log(error);
             });
+    }
+
+    proceedNext(data) {
+        sessionStorage.setItem("name", data != null ? data.p.name : this.name);
+        sessionStorage.setItem("gameType", this.gameType + "");
+        if (this.gameType == 2) {
+            sessionStorage.setItem("guess", data.p.guess);
+        }
+        this.router.navigateByUrl('/play');
     }
 }

@@ -20,8 +20,35 @@ type GameController struct {
 // NewGameController returns a new instance of GameController
 func NewGameController(
 	s *mgo.Session,
-	pc PlayerController) *GameController {
-	return &GameController{s, pc}
+	pc PlayerController) GameController {
+	return GameController{s, pc}
+}
+
+// CreateNewGame creates a new game in DB
+func (gc GameController) CreateNewGame(
+	dbName string,
+	gt int,
+	pID *bson.ObjectId,
+	guessNum int) (*models.Game, error) {
+
+	gameID := bson.NewObjectId()
+	game, e := models.NewGame(
+		gameID,
+		gt,
+		pID,
+		nil,
+		guessNum,
+		0)
+
+	if e != nil {
+		return nil, e
+	}
+
+	if er := gc.Session.DB(dbName).C(utils.DBCGames).Insert(game); er != nil {
+		return nil, er
+	}
+
+	return game, nil
 }
 
 // GetGameByID finds a game bt ID in DB

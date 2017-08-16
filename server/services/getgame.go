@@ -13,11 +13,11 @@ import (
 
 // GetGameService returns data for a specific game from the DB
 type GetGameService struct {
-	gameControler *controllers.GameController
+	gameControler controllers.GameController
 }
 
 // NewGetGameService returns a new GetGameService instance
-func NewGetGameService(gc *controllers.GameController) GetGameService {
+func NewGetGameService(gc controllers.GameController) GetGameService {
 	return GetGameService{gameControler: gc}
 }
 

@@ -7,9 +7,23 @@
             />
             <input type="button" id="make-guess-btn" class="btn btn-outline-danger" value="Give it a try" (click)="makeGuess()" />
         </div>
-
-
     </div>
+
+    <div *ngIf='gameType == "3"' id="play-guess-container">
+        <div id="p2p-btns">
+            <a class="btn btn-outline-danger ab" (click)="prepareHost()" id="host">HOST</a>
+            <a class="btn btn-outline-danger ab" (click)="prepareJoin()" id="join">JOIN</a>
+        </div>
+        <div *ngIf='join == true'>
+            <div id="name-input-container-name-form" class="input-group">
+                <input placeholder="Input 4 distinct digits" [(ngModel)]="guess" id="guess" type="text" aria-label="Guess" aria-describedby="make-guess-btn"
+                />
+                <input type="button" id="make-guess-btn" class="btn btn-outline-danger" value="Confirm" (click)="inputGuess()" />
+            </div>
+        </div>
+        <div id="active-games"></div>
+    </div>
+
     <div id="results">
         <p id="history"></p>
         <p id="win"></p>

@@ -17,7 +17,7 @@ import (
 // that contains how many bulls and cows
 // his number has
 type GuessService struct {
-	gameControler *controllers.GameController
+	gameControler controllers.GameController
 	bcChecker     utils.BCCheck
 }
 
@@ -30,7 +30,7 @@ type GuessPayload struct {
 }
 
 // NewGuessService returns a new instance of GuessService
-func NewGuessService(gc *controllers.GameController) GuessService {
+func NewGuessService(gc controllers.GameController) GuessService {
 	return GuessService{gameControler: gc, bcChecker: utils.BCCheck{}}
 }
 
