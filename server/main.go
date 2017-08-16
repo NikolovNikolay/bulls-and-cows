@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	servePort    = "8080"
+	servePort    = ":8081"
 	clientOrigin = "http://localhost:4200"
 )
 
