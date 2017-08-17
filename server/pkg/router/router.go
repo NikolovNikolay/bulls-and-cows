@@ -18,8 +18,8 @@ func New() BCRouter {
 
 // RegisterService takes a Service interface and
 // registers it to the internal mux
-func (b BCRouter) RegisterService(s services.Servicer) {
-	b.R.HandleFunc(
+func (b BCRouter) RegisterService(s services.Servicer) *mux.Route {
+	return b.R.HandleFunc(
 		s.Endpoint(),
 		s.Handle).Methods(s.Method())
 }
