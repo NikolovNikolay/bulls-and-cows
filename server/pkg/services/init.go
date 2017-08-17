@@ -14,6 +14,9 @@ import (
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 )
 
+const paramUserNameKey = "userName"
+const paramGameTypeKey = "gameType"
+
 // InitService initiates a new game and player in DB
 type InitService struct {
 	numGen utils.NumGen
@@ -27,8 +30,8 @@ type initPayload struct {
 }
 
 // NewInitService returns a new instance of InitService
-func NewInitService(db *mgo.Session) InitService {
-	return InitService{
+func NewInitService(db *mgo.Session) *InitService {
+	return &InitService{
 		numGen: utils.GetNumGen(),
 		db:     db}
 }
@@ -56,7 +59,7 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 	db := utils.GetDBSession()
 
 	// Gettings the player's username
-	userName := r.PostFormValue("userName")
+	userName := getVarFromRequest(r, paramUserNameKey)
 	if userName == "" {
 		// if no username is set then we autogenerate one
 		userName = generateUserName()

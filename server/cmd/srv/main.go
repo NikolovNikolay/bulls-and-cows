@@ -34,9 +34,11 @@ func main() {
 func configureRoutes(rt r.BCRouter, s *mgo.Session) r.BCRouter {
 
 	ss, e := socketio.NewServer(nil)
-	ws := socket.New(ss, s)
-	ws.Init()
-
+	if e != nil {
+		panic(e)
+	}
+	ws := socket.New(ss, s, false)
+	e = ws.Init()
 	if e != nil {
 		panic(e)
 	}

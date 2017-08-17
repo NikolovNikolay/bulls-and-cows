@@ -35,23 +35,26 @@ func TestGetGameEndpoint(t *testing.T) {
 }
 
 func TestGetGameHandlerValidID(t *testing.T) {
+	// Init the service
 	gg := NewGetGameService(utils.GetDBSession())
+
+	// Create a test game and initialize it
 	tgame = game.New(1)
 	tgame.AddPlayer(player.New("TestUser", true, utils.DBNameTest, utils.GetDBSession()))
 	tgame.Start(time.Now().Unix())
+
+	// Save the game to the DB
 	e := tgame.Add(utils.DBNameTest, utils.GetDBSession())
 	if e != nil {
 		t.Error("Could not add new game to DB")
 	}
 
-	handler := gg.Handle
-
+	// Create a test request and add custom headers
 	rq, _ := http.NewRequest("GET", "/api/game?gameID="+tgame.ID.Hex(), nil)
 	addTestHeadInRequest(rq)
-	// req := httptest.NewRequest(gg.Method(), "/api/game/", nil)
 
 	w := httptest.NewRecorder()
-	handler(w, rq)
+	gg.Handle(w, rq)
 
 	resp := w.Result()
 

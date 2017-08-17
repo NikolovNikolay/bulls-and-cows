@@ -13,7 +13,11 @@ import (
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
-	"github.com/gorilla/mux"
+)
+
+const (
+	paramGuessKey  = "guessNum"
+	paramGameIDKey = "gameID"
 )
 
 // GuessService returns results to client,
@@ -33,8 +37,8 @@ type GuessPayload struct {
 }
 
 // NewGuessService returns a new instance of GuessService
-func NewGuessService(db *mgo.Session) GuessService {
-	return GuessService{
+func NewGuessService(db *mgo.Session) *GuessService {
+	return &GuessService{
 		bcChecker: utils.BCCheck{},
 		db:        db}
 }
@@ -52,8 +56,8 @@ func (gs GuessService) Method() string {
 // Handle is the handle function used to register in the mux
 func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	response := response.New(200, "", nil)
-	vars := mux.Vars(r)
-	uGuess, e := gs.validateGuessNumberParam(vars)
+	parseForm(r)
+	newGuess, e := gs.validateGuessNumberParam(getVarFromRequest(r, paramGuessKey))
 	if e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusBadRequest
@@ -63,9 +67,9 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 
 	dbName := getTargetDbName(r)
 	db := utils.GetDBSession()
-	gID := r.PostFormValue("gameID")
+	gID := r.PostFormValue(paramGameIDKey)
 	if gID == "" {
-		response.Error = "Not a valid guess - not referring to a game"
+		response.Error = "Request not referring to a game"
 		response.Status = http.StatusBadRequest
 		DefSendResponseBeh(w, response)
 		return
@@ -73,7 +77,7 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 
 	g, e := game.FindByID(gID, dbName, gs.db)
 	if e != nil || g.StartTime == 0 {
-		response.Error = "Not a valid guess - not referring to a game"
+		response.Error = "Request not referring to a game"
 		response.Status = http.StatusBadRequest
 		DefSendResponseBeh(w, response)
 		return
@@ -89,8 +93,8 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	br := gs.bcChecker.Check(g.Number, uGuess)
-	dbGuess := guess.New(uGuess, br.Bulls, br.Cows)
+	br := gs.bcChecker.Check(g.Number, newGuess)
+	dbGuess := guess.New(newGuess, br.Bulls, br.Cows)
 	guesses := append(g.Players[0].Guesses, []*guess.Guess{&dbGuess}...)
 	g.Players[0].Guesses = guesses
 
@@ -122,15 +126,15 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	DefSendResponseBeh(w, response)
 }
 
-func (gs GuessService) validateGuessNumberParam(ps map[string]string) (int, error) {
-	g := ps["guessNum"]
-	if g == "" {
+func (gs GuessService) validateGuessNumberParam(guess string) (int, error) {
+
+	if guess == "" {
 		return -1, errors.New("Missing parameter guess")
 	}
 
-	if !gs.bcChecker.ValidateMadeGuess(g) {
+	if !gs.bcChecker.ValidateMadeGuess(guess) {
 		return -1, errors.New("Invalid guess number")
 	}
 
-	return strconv.Atoi(g)
+	return strconv.Atoi(guess)
 }

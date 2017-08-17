@@ -83,6 +83,11 @@ func TestDbOps(t *testing.T) {
 		t.Run("Add", add)
 		t.Run("FindByID", findByID)
 		t.Run("UpdateById", updateByID)
+		t.Run("AddPlayer", func(t *testing.T) {
+			tgame := New(1)
+			tgame.AddPlayer(player.New("TestUser", true, utils.DBNameTest, utils.GetDBSession()))
+			tgame.Start(time.Now().Unix())
+		})
 	})
 
 }

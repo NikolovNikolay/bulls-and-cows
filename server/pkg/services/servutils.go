@@ -45,6 +45,10 @@ func getVarFromRequest(r *http.Request, key string) string {
 		paramVal = r.FormValue(key)
 	}
 
+	if paramVal == "" {
+		paramVal = r.PostFormValue(key)
+	}
+
 	return paramVal
 }
 
@@ -66,7 +70,7 @@ func getTargetDbName(r *http.Request) string {
 }
 
 func validateGameTypeParam(r *http.Request) (int, error) {
-	gameType := r.PostFormValue("gameType")
+	gameType := r.PostFormValue(paramGameTypeKey)
 	if gameType == "" {
 		return 0, errors.New("Missing parameter for game type")
 	}

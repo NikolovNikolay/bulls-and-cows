@@ -18,6 +18,7 @@ type Socket struct {
 	Socket  *socketio.Server
 	roomMap map[string]int
 	db      *mgo.Session
+	inTest  bool
 }
 
 const (
@@ -39,15 +40,16 @@ const (
 )
 
 // New returns a new instance of SocketController
-func New(socket *socketio.Server, db *mgo.Session) *Socket {
+func New(socket *socketio.Server, db *mgo.Session, inTest bool) *Socket {
 	return &Socket{
 		Socket:  socket,
 		roomMap: make(map[string]int),
-		db:      db}
+		db:      db,
+		inTest:  inTest}
 }
 
 // Init configures the socket.io server
-func (s Socket) Init() {
+func (s Socket) Init() error {
 	e := s.Socket.On(evtConnection, func(so socketio.Socket) {
 		log.Println(so.Id(), "connected via socket.io")
 		var e error
@@ -62,19 +64,24 @@ func (s Socket) Init() {
 	})
 	if e != nil {
 		log.Println("Could not connect to socket")
+		return e
 	}
 	e = s.Socket.On(evtError, func(so socketio.Socket, err error) {
 		log.Println("error:", err)
 	})
 	if e != nil {
 		log.Println("Could not register error handler for socket")
+		return e
 	}
 	e = s.Socket.On(evtDisconnect, func(so socketio.Socket, err error) {
 		log.Println("disconnect:", err)
 	})
 	if e != nil {
 		log.Println("Could not register disconnect handler for socket")
+		return e
 	}
+
+	return nil
 }
 
 func (s *Socket) createGameHandler(
@@ -88,22 +95,24 @@ func (s *Socket) createGameHandler(
 		s.increaseRoomParticipants(room)
 		dbName := utils.DBName
 		db := utils.GetDBSession()
+		var e error
+		if !s.inTest {
+			e = so.BroadcastTo(
+				roomDefault,
+				evtUpdActiveGames,
+				[1]string{room})
+			if e != nil {
+				log.Printf("Could not broadcast to '%s' room", room)
+			}
 
-		e := so.BroadcastTo(
-			roomDefault,
-			evtUpdActiveGames,
-			[1]string{room})
-		if e != nil {
-			log.Printf("Could not broadcast to '%s' room", room)
-		}
-
-		e = so.Leave(roomDefault)
-		if e != nil {
-			log.Printf("Could not leave the default room")
-		}
-		e = so.Join(room)
-		if e != nil {
-			log.Printf("Could not join '%s' room", room)
+			e = so.Leave(roomDefault)
+			if e != nil {
+				log.Printf("Could not leave the default room")
+			}
+			e = so.Join(room)
+			if e != nil {
+				log.Printf("Could not join '%s' room", room)
+			}
 		}
 
 		p := player.New(
@@ -146,27 +155,33 @@ func (s *Socket) joinGameHandler(
 			return false
 		}
 
-		dbName := utils.DBName
-		db := utils.GetDBSession()
-		s.increaseRoomParticipants(room)
-		e := so.BroadcastTo(roomDefault, evtJoinedAGame, rival)
-		if e != nil {
-			log.Printf("Could not broadcast event to '%s' room", roomDefault)
-		}
-		e = so.Join(room)
-		if e != nil {
-			log.Printf("Could not join '%s", room)
-			return false
+		var dbName = utils.DBName
+		if s.inTest {
+			dbName = utils.DBNameTest
 		}
 
-		host, e := player.FindByName(room, utils.DBName, s.db)
+		db := utils.GetDBSession()
+		s.increaseRoomParticipants(room)
+		if !s.inTest {
+			e := so.BroadcastTo(roomDefault, evtJoinedAGame, rival)
+			if e != nil {
+				log.Printf("Could not broadcast event to '%s' room", roomDefault)
+			}
+			e = so.Join(room)
+			if e != nil {
+				log.Printf("Could not join '%s", room)
+				return false
+			}
+		}
+
+		host, e := player.FindByName(room, dbName, s.db)
 		if e != nil {
 			log.Printf("Could not find host of '%s'", room)
 			return false
 		}
 
 		gID := host.LoggedIn
-		g, e := game.FindByID(gID.Hex(), utils.DBName, s.db)
+		g, e := game.FindByID(gID.Hex(), dbName, s.db)
 		if e != nil {
 			log.Printf("Could not get game with host '%s'", host.Name)
 			return false
@@ -188,9 +203,12 @@ func (s *Socket) joinGameHandler(
 		if e != nil {
 			log.Printf("Could not update game '%s' in DB", g.ID)
 		}
-		e = so.BroadcastTo(room, evtConfirmJoinGame)
-		if e != nil {
-			log.Printf("Could not broadcast join to '%s' room", room)
+
+		if !s.inTest {
+			e = so.BroadcastTo(room, evtConfirmJoinGame)
+			if e != nil {
+				log.Printf("Could not broadcast join to '%s' room", room)
+			}
 		}
 
 		return true
@@ -201,11 +219,11 @@ func (s *Socket) getGames(
 	so socketio.Socket) func(a string) []string {
 
 	return func(playerName string) []string {
-		avrooms := make([]string, 1)
+		var avrooms []string
 
 		for k, v := range s.roomMap {
 			if v < 2 && k != playerName {
-				avrooms = append(avrooms, k)
+				avrooms = append(avrooms, []string{k}...)
 			}
 		}
 
@@ -216,7 +234,11 @@ func (s *Socket) getGames(
 func (s *Socket) setPlayerGuessNumHandler(
 	so socketio.Socket) func(a, b string) bool {
 	return func(guess, playerName string) bool {
-		dbName := utils.DBName
+		var dbName = utils.DBName
+		if s.inTest {
+			dbName = utils.DBNameTest
+		}
+
 		db := utils.GetDBSession()
 		p, e := player.FindByName(playerName, dbName, db)
 		if e != nil {

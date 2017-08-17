@@ -19,6 +19,10 @@ func GetDBSession() *mgo.Session {
 
 // initMongo initializes a mongo db connection
 func initMongo() *mgo.Session {
+	if session != nil {
+		return session
+	}
+
 	session, err := mgo.Dial("mongodb://localhost")
 
 	if err != nil {
