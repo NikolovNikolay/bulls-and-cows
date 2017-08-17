@@ -118,10 +118,7 @@ func (s *Socket) createGameHandler(
 			return false
 		}
 
-		g := game.New(
-			utils.P2P,
-			dbName,
-			db)
+		g := game.New(utils.P2P)
 
 		p.LogIn(&g.ID)
 		e = p.Update(dbName, db)

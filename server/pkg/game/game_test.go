@@ -1,43 +1,24 @@
 package game
 
-import "testing"
-import "gopkg.in/mgo.v2/bson"
-import "github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
+import (
+	"testing"
+	"time"
+
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
+)
 
 func TestNewGameObject(t *testing.T) {
 
 	allVal := func(t *testing.T) {
-		fID := bson.NewObjectId()
-		sID := bson.NewObjectId()
-		_, e := New(
-			bson.NewObjectId(),
-			1,
-			&fID,
-			&sID,
-			1234,
-			3467)
-		if e != nil {
-			t.Error("Could not create a new game object", e)
-		}
-	}
-
-	invalidPOneID := func(t *testing.T) {
-		_, e := New(
-			bson.NewObjectId(),
-			1,
-			nil,
-			nil,
-			1234,
-			3467)
-
-		if e == nil {
-			t.Error("Should not be able to create a new game without host ID")
+		g := New(1)
+		if g.GameType != 1 {
+			t.Error("Could not initialize a new game object")
 		}
 	}
 
 	t.Run("Create new game", func(t *testing.T) {
 		t.Run("All valid params", allVal)
-		t.Run("Should fail if invalid host ID", invalidPOneID)
 	})
 }
 
@@ -45,13 +26,12 @@ func TestDbOps(t *testing.T) {
 
 	var game *Game
 	add := func(t *testing.T) {
-		pID := bson.NewObjectId()
-		g, e := AddToDb(
-			utils.DBNameTest,
-			2,
-			&pID,
-			1234,
-			utils.GetDBSession())
+		g := New(1)
+		g.SetNumber(8327)
+		g.Start(time.Now().Unix())
+		g.End(time.Now().Unix() + 1000)
+		e := g.Add(utils.DBNameTest, utils.GetDBSession())
+
 		game = g
 
 		if e != nil {
@@ -61,7 +41,7 @@ func TestDbOps(t *testing.T) {
 
 	findByID := func(t *testing.T) {
 		g, e := FindByID(
-			game.GameID.Hex(),
+			game.ID.Hex(),
 			utils.DBNameTest,
 			utils.GetDBSession())
 
@@ -69,16 +49,15 @@ func TestDbOps(t *testing.T) {
 			t.Error("Error appeared while trying to get game from DB", e)
 		}
 
-		if g.GameID.Hex() != game.GameID.Hex() {
+		if g.ID.Hex() != game.ID.Hex() {
 			t.Error("Did not get the right game from DB")
 		}
 	}
 
 	updateByID := func(t *testing.T) {
-		game.GuessNumSec = 1234
+		game.Number = 1234
 
-		e := UpdateByID(
-			game,
+		e := game.Update(
 			utils.DBNameTest,
 			utils.GetDBSession())
 
@@ -87,7 +66,7 @@ func TestDbOps(t *testing.T) {
 		}
 
 		ng, e := FindByID(
-			game.GameID.Hex(),
+			game.ID.Hex(),
 			utils.DBNameTest,
 			utils.GetDBSession())
 
@@ -95,8 +74,8 @@ func TestDbOps(t *testing.T) {
 			t.Error("Error appeared while trying to get game from DB", e)
 		}
 
-		if ng.GuessNumSec != game.GuessNumSec {
-			t.Error("Did not update game DB correctly", game.GameID)
+		if ng.Number != game.Number {
+			t.Error("Did not update game DB correctly", game.ID)
 		}
 	}
 
@@ -109,15 +88,20 @@ func TestDbOps(t *testing.T) {
 }
 
 func TestFindById(t *testing.T) {
-	pID := bson.NewObjectId()
-	_, e := AddToDb(
+	g := New(2)
+	g.AddPlayer(player.New(
+		"Test User",
+		false,
 		utils.DBNameTest,
-		2,
-		&pID,
-		1234,
-		utils.GetDBSession())
+		utils.GetDBSession()))
+	e := g.Add(utils.DBNameTest, utils.GetDBSession())
 
 	if e != nil {
 		t.Error("Could not insert game in DB", e)
+	}
+
+	fr, e := FindByID(g.ID.Hex(), utils.DBNameTest, utils.GetDBSession())
+	if e != nil || fr.ID.Hex() != g.ID.Hex() {
+		t.Error("Could not find the proper game doc in DB")
 	}
 }

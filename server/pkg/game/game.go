@@ -22,10 +22,7 @@ type Game struct {
 }
 
 // New returns a new Game instance
-func New(
-	gameType int,
-	dbName string,
-	db *mgo.Session) *Game {
+func New(gameType int) *Game {
 	game := &Game{
 		ID:       bson.NewObjectId(),
 		GameType: gameType}
@@ -79,8 +76,8 @@ func (g *Game) AddPlayer(p *player.Player) {
 	g.Players = append(g.Players, []*player.Player{p}...)
 }
 
-// GenNumber creates a number to guess
-func (g *Game) GenNumber(num int) {
+// SetNumber creates a number to guess
+func (g *Game) SetNumber(num int) {
 	g.Number = num
 }
 

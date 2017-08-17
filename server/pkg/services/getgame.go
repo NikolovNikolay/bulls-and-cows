@@ -7,7 +7,6 @@ import (
 
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/game"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/response"
-	"github.com/gorilla/mux"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -18,8 +17,8 @@ type GetGameService struct {
 }
 
 // NewGetGameService returns a new GetGameService instance
-func NewGetGameService(db *mgo.Session) GetGameService {
-	return GetGameService{db: db}
+func NewGetGameService(db *mgo.Session) *GetGameService {
+	return &GetGameService{db: db}
 }
 
 type gamePayload GuessPayload
@@ -37,9 +36,9 @@ func (gg GetGameService) Method() string {
 // Handle is the handle function used to register in the mux
 func (gg GetGameService) Handle(w http.ResponseWriter, r *http.Request) {
 	response := response.New(200, "", nil)
+	parseForm(r)
+	gameID := getVarFromRequest(r, "gameID")
 
-	vars := mux.Vars(r)
-	gameID := vars["gameID"]
 	if gameID == "" || !bson.IsObjectIdHex(gameID) {
 		response.Status = http.StatusBadRequest
 		response.Error = errors.New("Invalid gameID parameter").Error()

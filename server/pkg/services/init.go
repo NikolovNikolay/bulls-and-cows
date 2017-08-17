@@ -1,17 +1,12 @@
 package services
 
 import (
-	"errors"
-	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
 	"gopkg.in/mgo.v2"
-
-	"gopkg.in/mgo.v2/bson"
 
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/game"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
@@ -103,9 +98,9 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g := game.New(gt, dbName, utils.GetDBSession())
+	g := game.New(gt)
 	g.AddPlayer(p)
-	g.GenNumber(is.numGen.Gen())
+	g.SetNumber(is.numGen.Gen())
 	g.Start(time.Now().Unix())
 	e = g.Add(dbName, db)
 	if e != nil {
@@ -139,41 +134,4 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 
 	response.Payload = payload
 	DefSendResponseBeh(w, response)
-}
-
-func generateUserName() string {
-	rand.Seed(time.Now().UnixNano())
-	randPostfix := rand.Intn(10000)
-	return fmt.Sprintf("user%d", randPostfix)
-}
-
-func generateNewPlayer(name string) player.Player {
-	return player.Player{
-		ID:       bson.NewObjectId(),
-		Name:     name,
-		Logged:   false,
-		LoggedIn: nil}
-}
-
-func getTargetDbName(r *http.Request) string {
-	th := r.Header.Get("x-test")
-	isTesting := th != ""
-	if isTesting {
-		return utils.DBNameTest
-	}
-
-	return utils.DBName
-}
-
-func validateGameTypeParam(r *http.Request) (int, error) {
-	gameType := r.PostFormValue("gameType")
-	if gameType == "" {
-		return 0, errors.New("Missing parameter for game type")
-	}
-
-	gt, e := strconv.Atoi(gameType)
-	if e != nil {
-		return 0, errors.New("Could not parse game type parameter")
-	}
-	return gt, nil
 }

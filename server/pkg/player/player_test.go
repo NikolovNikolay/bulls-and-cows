@@ -9,17 +9,15 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	pID := bson.NewObjectId()
-	New(pID, "Test", true)
+	New("Test", true, utils.DBNameTest, utils.GetDBSession())
 }
 
 func TestDbOps(t *testing.T) {
-	pID := bson.NewObjectId()
-	newPlayer := New(pID, "Test User", false)
+	newPlayer := New("Test User", false, utils.DBNameTest, utils.GetDBSession())
+	newPlayer.LogOut()
 
 	add := func(t *testing.T) {
-		e := AddToDB(
-			newPlayer,
+		e := newPlayer.Add(
 			utils.DBNameTest,
 			utils.GetDBSession())
 
@@ -73,9 +71,10 @@ func TestDbOps(t *testing.T) {
 	}
 
 	update := func(t *testing.T) {
+		gID := bson.NewObjectId()
+		newPlayer.LogIn(&gID)
 		newPlayer.Logged = true
-		e := Update(
-			newPlayer,
+		e := newPlayer.Update(
 			utils.DBNameTest,
 			utils.GetDBSession())
 
