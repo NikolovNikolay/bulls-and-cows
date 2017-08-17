@@ -3,6 +3,8 @@ package player
 import (
 	"errors"
 
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/guess"
+
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -12,20 +14,51 @@ import (
 type Player struct {
 	ID       bson.ObjectId  `json:"id" bson:"_id"`
 	Name     string         `json:"name" bson:"name"`
+	Guesses  []*guess.Guess `json:"guesses" bson:"guesses"`
 	Logged   bool           `json:"logged" bson:"logged"`
 	LoggedIn *bson.ObjectId `json:"loggedId" bson:"loggedIn"`
+	Number   int            `json:"number" bson:"number"`
 }
 
 // New returns a new player instance
 func New(
-	id bson.ObjectId,
 	name string,
-	logged bool) *Player {
+	logged bool,
+	dbName string,
+	db *mgo.Session) *Player {
 	return &Player{
-		ID:       id,
+		ID:       bson.NewObjectId(),
 		Name:     name,
 		Logged:   logged,
 		LoggedIn: nil}
+}
+
+// Add creates a player in the DB
+func (p *Player) Add(dbName string, db *mgo.Session) (e error) {
+	c := db.DB(dbName).C(utils.DBCPlayers)
+	err := c.Insert(p)
+
+	return err
+}
+
+// Update updates a player in the DB
+func (p *Player) Update(dbName string, db *mgo.Session) (e error) {
+	c := db.DB(dbName).C(utils.DBCPlayers)
+	err := c.Update(bson.M{"_id": p.ID}, p)
+
+	return err
+}
+
+// LogIn marks the player as logged into a game
+func (p *Player) LogIn(gID *bson.ObjectId) {
+	p.Logged = true
+	p.LoggedIn = gID
+}
+
+// LogOut marks the player as logged out of a game
+func (p *Player) LogOut() {
+	p.Logged = false
+	p.LoggedIn = nil
 }
 
 // FindByName finds a player by name in DB
@@ -54,26 +87,4 @@ func FindByID(
 	}
 
 	return &result, errors.New("Invalid player id")
-}
-
-// AddToDB creates a player in the DB
-func AddToDB(
-	p *Player,
-	dbName string,
-	mon *mgo.Session) (e error) {
-	c := mon.DB(dbName).C(utils.DBCPlayers)
-	err := c.Insert(p)
-
-	return err
-}
-
-// Update updates a player in the DB
-func Update(
-	p *Player,
-	dbName string,
-	mon *mgo.Session) (e error) {
-	c := mon.DB(dbName).C(utils.DBCPlayers)
-	err := c.Update(bson.M{"_id": p.ID}, p)
-
-	return err
 }

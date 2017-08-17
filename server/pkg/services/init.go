@@ -58,6 +58,7 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbName := getTargetDbName(r)
+	db := utils.GetDBSession()
 
 	// Gettings the player's username
 	userName := r.PostFormValue("userName")
@@ -78,12 +79,9 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 	p, err := player.FindByName(userName, utils.DBName, is.db)
 	if err != nil {
 		// if he dows not exist we get an error, then we create it
-		p = player.New(
-			bson.NewObjectId(),
-			userName,
-			false)
+		p = player.New(userName, false, dbName, db)
 
-		if insErr := player.AddToDB(p, utils.DBName, is.db); insErr != nil {
+		if insErr := p.Add(dbName, db); insErr != nil {
 			log.Fatal(insErr)
 			response.Status = http.StatusInternalServerError
 			response.Error = insErr.Error()
@@ -105,7 +103,11 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	g, e := game.AddToDb(dbName, gt, &p.ID, is.numGen.Gen(), is.db)
+	g := game.New(gt, dbName, utils.GetDBSession())
+	g.AddPlayer(p)
+	g.GenNumber(is.numGen.Gen())
+	g.Start(time.Now().Unix())
+	e = g.Add(dbName, db)
 	if e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusBadRequest
@@ -115,11 +117,10 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 
 	// if the player exists and he is not logged
 	// in a game then we mark him as now logged
-	p.Logged = true
-	p.LoggedIn = &g.GameID
+	p.LogIn(&g.ID)
 
 	// we update the player in DB
-	if e := player.Update(p, utils.DBName, is.db); e != nil {
+	if e := p.Update(dbName, utils.GetDBSession()); e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusInternalServerError
 		log.Fatal(e)
@@ -127,13 +128,13 @@ func (is InitService) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload.GameSessionID = g.GameID.Hex()
+	payload.GameSessionID = g.ID.Hex()
 	payload.PlayerName = p.Name
 
 	// If Comp. vs. Comp mode is selected
 	// we return the generated guess also
 	if gt == utils.CVC {
-		payload.Guess = strconv.Itoa(g.GuessNum)
+		payload.Guess = strconv.Itoa(g.Number)
 	}
 
 	response.Payload = payload

@@ -58,7 +58,7 @@ func (gg GetGameService) Handle(w http.ResponseWriter, r *http.Request) {
 
 	response.Payload = gamePayload{
 		BC:      nil,
-		Guesses: g.PlayerOneGuesses,
+		Guesses: g.Players[0].Guesses,
 		Win:     g.EndTime != 0,
 		Time:    time.Now().Unix() - g.StartTime}
 	DefSendResponseBeh(w, response)

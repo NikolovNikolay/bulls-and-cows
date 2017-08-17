@@ -27,7 +27,7 @@ type GuessService struct {
 // GuessPayload is the payload of the GuessService
 type GuessPayload struct {
 	BC      *utils.BCCheckResult `json:"bc"`
-	Guesses []guess.Guess        `json:"m"`
+	Guesses []*guess.Guess       `json:"m"`
 	Win     bool                 `json:"win"`
 	Time    int64                `json:"t"`
 }
@@ -62,6 +62,7 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dbName := getTargetDbName(r)
+	db := utils.GetDBSession()
 	gID := r.PostFormValue("gameID")
 	if gID == "" {
 		response.Error = "Not a valid guess - not referring to a game"
@@ -81,33 +82,32 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	if g.EndTime != 0 {
 		response.Payload = GuessPayload{
 			BC:      &utils.BCCheckResult{Bulls: 4, Cows: 0},
-			Guesses: g.PlayerOneGuesses,
+			Guesses: g.Players[0].Guesses,
 			Win:     true,
 			Time:    g.EndTime - g.StartTime}
 		DefSendResponseBeh(w, response)
 		return
 	}
 
-	br := gs.bcChecker.Check(g.GuessNum, uGuess)
+	br := gs.bcChecker.Check(g.Number, uGuess)
 	dbGuess := guess.New(uGuess, br.Bulls, br.Cows)
-	guesses := append(g.PlayerOneGuesses, []guess.Guess{dbGuess}...)
-
-	g.PlayerOneGuesses = guesses
+	guesses := append(g.Players[0].Guesses, []*guess.Guess{&dbGuess}...)
+	g.Players[0].Guesses = guesses
 
 	// check if winner
 	var win = false
 	now := time.Now().Unix()
 	var t = (now - g.StartTime)
+
 	if br.Bulls == 4 {
 		win = true
-		g.EndTime = now
-		p, _ := player.FindByID(g.PlayerOneID.Hex(), dbName, gs.db)
-		p.Logged = false
-		p.LoggedIn = nil
-		e = player.Update(p, dbName, gs.db)
+		g.End(now)
+		p, _ := player.FindByID(g.Players[0].ID.Hex(), dbName, gs.db)
+		p.LogOut()
+		e = p.Update(dbName, db)
 	}
 
-	e = game.UpdateByID(g, dbName, gs.db)
+	e = g.Update(dbName, db)
 	if e != nil {
 		response.Status = http.StatusInternalServerError
 		response.Error = e.Error()
@@ -116,7 +116,7 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 
 	response.Payload = GuessPayload{
 		BC:      br,
-		Guesses: g.PlayerOneGuesses,
+		Guesses: g.Players[0].Guesses,
 		Win:     win,
 		Time:    t}
 	DefSendResponseBeh(w, response)

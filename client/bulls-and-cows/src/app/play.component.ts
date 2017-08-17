@@ -39,11 +39,11 @@ export class PlayComponent implements OnInit {
         this.route = route;
         this.doubleJoin = false;
         this.join = false;
-
+        
         if (this.gameType === "1") {
             this.greet = `Now we are playing, ${this.name}!`;
         } else if (this.gameType === "2") {
-            this.greet += ` Your browser is trying to guess ${sessionStorage.getItem("guess")}.`;
+            this.greet = ` Your browser is trying to guess ${sessionStorage.getItem("guess")}.`;
             this.startAutoPlay();
         } else if (this.gameType === "3") {
             this.greet = `Welcome, ${this.name}`;

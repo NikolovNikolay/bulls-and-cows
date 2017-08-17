@@ -10,7 +10,6 @@ import (
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	"github.com/googollee/go-socket.io"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Socket gives access to some real-time
@@ -87,6 +86,8 @@ func (s *Socket) createGameHandler(
 		}
 
 		s.increaseRoomParticipants(room)
+		dbName := utils.DBName
+		db := utils.GetDBSession()
 
 		e := so.BroadcastTo(
 			roomDefault,
@@ -106,25 +107,24 @@ func (s *Socket) createGameHandler(
 		}
 
 		p := player.New(
-			bson.NewObjectId(),
 			room,
-			true)
-		e = player.AddToDB(p, utils.DBName, s.db)
+			false,
+			utils.DBName,
+			utils.GetDBSession())
+
+		e = p.Add(dbName, db)
 		if e != nil {
-			log.Println("Could not insert new player to DB")
+			log.Println("Could n insert new player to DB")
 			return false
 		}
 
-		g, _ := game.New(
-			utils.DBName,
+		g := game.New(
 			utils.P2P,
-			&p.ID,
-			nil,
-			0,
-			0)
+			dbName,
+			db)
 
-		p.LoggedIn = &g.GameID
-		e = player.Update(p, utils.DBName, s.db)
+		p.LogIn(&g.ID)
+		e = p.Update(dbName, db)
 		if e != nil {
 			log.Println("Could not update player in DB")
 			return false
@@ -149,6 +149,8 @@ func (s *Socket) joinGameHandler(
 			return false
 		}
 
+		dbName := utils.DBName
+		db := utils.GetDBSession()
 		s.increaseRoomParticipants(room)
 		e := so.BroadcastTo(roomDefault, evtJoinedAGame, rival)
 		if e != nil {
@@ -173,20 +175,21 @@ func (s *Socket) joinGameHandler(
 			return false
 		}
 		p := player.New(
-			bson.NewObjectId(),
 			rival,
-			true)
-		p.LoggedIn = gID
+			false,
+			dbName,
+			db)
+		p.LogIn(gID)
 
-		e = player.AddToDB(p, utils.DBName, s.db)
+		e = p.Add(dbName, db)
 		if e != nil {
 			log.Printf("Could not add player '%s' to DB when attempting to join", p.Name)
 		}
 
-		g.PlayerTwoID = &p.ID
-		e = game.UpdateByID(g, utils.DBName, s.db)
+		g.AddPlayer(p)
+		e = g.Update(dbName, db)
 		if e != nil {
-			log.Printf("Could not update game '%s' in DB", g.GameID)
+			log.Printf("Could not update game '%s' in DB", g.ID)
 		}
 		e = so.BroadcastTo(room, evtConfirmJoinGame)
 		if e != nil {
@@ -216,26 +219,28 @@ func (s *Socket) getGames(
 func (s *Socket) setPlayerGuessNumHandler(
 	so socketio.Socket) func(a, b string) bool {
 	return func(guess, playerName string) bool {
-		p, e := player.FindByName(playerName, utils.DBName, s.db)
+		dbName := utils.DBName
+		db := utils.GetDBSession()
+		p, e := player.FindByName(playerName, dbName, db)
 		if e != nil {
 			log.Printf("Could not find player '%s'", playerName)
 			return false
 		}
-		g, e := game.FindByID(p.LoggedIn.Hex(), utils.DBName, s.db)
+		g, e := game.FindByID(p.LoggedIn.Hex(), dbName, db)
 		if e != nil {
-			log.Printf("Could not find game '%s'", g.GameID)
+			log.Printf("Could not find game '%s'", g.ID)
 			return false
 		}
 
-		if g.PlayerOneID == &p.ID {
-			g.GuessNum, _ = strconv.Atoi(guess)
+		if g.Players[0].ID == p.ID {
+			g.Players[0].Number, _ = strconv.Atoi(guess)
 		} else {
-			g.GuessNumSec, _ = strconv.Atoi(guess)
+			g.Players[1].Number, _ = strconv.Atoi(guess)
 		}
 
-		e = game.UpdateByID(g, utils.DBName, s.db)
+		e = g.Update(dbName, db)
 		if e != nil {
-			log.Printf("Could not update game '%s'", g.GameID)
+			log.Printf("Could not update game '%s'", g.ID)
 			return false
 		}
 

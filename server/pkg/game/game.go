@@ -2,84 +2,86 @@ package game
 
 import (
 	"errors"
-	"time"
+
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
 
 	"gopkg.in/mgo.v2"
 
-	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/guess"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	"gopkg.in/mgo.v2/bson"
 )
 
 // Game represents a games session
 type Game struct {
-	GameID           bson.ObjectId  `json:"gameID" bson:"_id"`
-	StartTime        int64          `josn:"startTime" bson:"startTime"`
-	EndTime          int64          `json:"endTime" bson:"endTime"`
-	GameType         int            `json:"type" bson:"type"`
-	PlayerOneID      *bson.ObjectId `json:"playerOne" bson:"playerOne"`
-	PlayerTwoID      *bson.ObjectId `json:"playerTwo" bson:"playerTwo"`
-	PlayerOneGuesses []guess.Guess  `json:"playerOneGuesses" bson:"playerOneGuesses"`
-	PlayerTwoGuesses []guess.Guess  `json:"playerTwoGuesses" bson:"playerTwoGuesses"`
-	GuessNum         int            `json:"guess" bson:"guess"`
-	GuessNumSec      int            `json:"guessSec" bson:"guessSec"`
+	ID        bson.ObjectId    `json:"gameID" bson:"_id"`
+	StartTime int64            `josn:"startTime" bson:"startTime"`
+	EndTime   int64            `json:"endTime" bson:"endTime"`
+	GameType  int              `json:"type" bson:"type"`
+	Players   []*player.Player `json:"players" bson:"players"`
+	Number    int              `json:"number" bson:"number"`
 }
 
 // New returns a new Game instance
 func New(
-	gameID bson.ObjectId,
 	gameType int,
-	pOneID *bson.ObjectId,
-	pTwoID *bson.ObjectId,
-	guessNum int,
-	guessNumSec int) (*Game, error) {
-
-	if pOneID == nil {
-		return nil, errors.New("Player one is required")
-	}
-
+	dbName string,
+	db *mgo.Session) *Game {
 	game := &Game{
-		GameID:           gameID,
-		GameType:         gameType,
-		PlayerOneID:      pOneID,
-		PlayerTwoID:      pTwoID,
-		PlayerOneGuesses: nil,
-		PlayerTwoGuesses: nil,
-		GuessNum:         guessNum,
-		GuessNumSec:      guessNumSec,
-		StartTime:        time.Now().Unix()}
+		ID:       bson.NewObjectId(),
+		GameType: gameType}
 
-	return game, nil
+	return game
 }
 
-// AddToDb creates a new game in DB
-func AddToDb(
-	dbName string,
-	gameType int,
-	pID *bson.ObjectId,
-	guessNum int,
-	mon *mgo.Session) (*Game, error) {
+// Add creates a new game in DB
+func (g *Game) Add(dbName string, db *mgo.Session) error {
 
-	gameID := bson.NewObjectId()
-	game, e := New(
-		gameID,
-		gameType,
-		pID,
-		nil,
-		guessNum,
-		0)
-
-	if e != nil {
-		return nil, e
-	}
-	if er := mon.DB(
+	if er := db.DB(
 		dbName).C(
 		utils.DBCGames).Insert(
-		game); er != nil {
-		return nil, er
+		g); er != nil {
+		return er
 	}
 
-	return game, nil
+	return nil
+}
+
+// Start adds a start time to a game
+func (g *Game) Start(t int64) {
+	g.StartTime = t
+}
+
+// Update updates a game in DB
+func (g *Game) Update(dbName string, db *mgo.Session) error {
+
+	if bson.IsObjectIdHex(g.ID.Hex()) {
+		e := db.DB(
+			dbName).C(
+			utils.DBCGames).UpdateId(
+			g.ID, g)
+
+		if e != nil {
+			return e
+		}
+
+		return nil
+	}
+	return errors.New("Invalid gameID")
+}
+
+// End marks a game asa ended by adding end timestamp
+func (g *Game) End(t int64) {
+	g.EndTime = t
+}
+
+// AddPlayer adds a new player to the game
+func (g *Game) AddPlayer(p *player.Player) {
+	g.Players = append(g.Players, []*player.Player{p}...)
+}
+
+// GenNumber creates a number to guess
+func (g *Game) GenNumber(num int) {
+	g.Number = num
 }
 
 // FindByID finds a game bt ID in DB
@@ -100,26 +102,4 @@ func FindByID(
 
 	err = errors.New("Invalid gameID")
 	return &game, err
-}
-
-// UpdateByID finds a game by ID in DB
-// then updates it
-func UpdateByID(
-	g *Game,
-	dbName string,
-	mon *mgo.Session) error {
-
-	if bson.IsObjectIdHex(g.GameID.Hex()) {
-		e := mon.DB(
-			dbName).C(
-			utils.DBCGames).UpdateId(
-			g.GameID, g)
-
-		if e != nil {
-			return e
-		}
-
-		return nil
-	}
-	return errors.New("Invalid gameID")
 }
