@@ -3,6 +3,7 @@ import { ActivatedRoute, ParamMap, Params, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http'
 import { HttpHeaders } from '@angular/common/http'
 import { BCResolver } from "./bc-resolver";
+import { GameTypes } from './game-types'
 import * as io from 'socket.io-client';
 
 @Component({
@@ -11,102 +12,70 @@ import * as io from 'socket.io-client';
     styleUrls: ['./play.component.css']
 })
 export class PlayComponent implements OnInit {
+    private static get guessURL(): string { return `http://localhost:8080/api/guess/`; }
+    private static get gameDataURL(): string { return `http://localhost:8080/api/game/`; }
+    private static get autoPlayTurnInterval(): number { return 700; }
+
     private http: HttpClient;
     private route: ActivatedRoute;
     private router: Router;
     private engine: any;
-    private socket: any;
-    private clientSock: any;
+    private lastGuess: string;
 
-    pattern = /^\d+$/;
     guess: string;
     name: string;
     greet: string;
     gameType: string;
-    doubleJoin: boolean;
-    join: boolean;
-    isHost: boolean;
 
     constructor(
         http: HttpClient,
         route: ActivatedRoute,
         router: Router
     ) {
-        let __this = this;
         this.name = sessionStorage.getItem("name");
         this.gameType = sessionStorage.getItem("gameType");
         this.http = http;
         this.router = router;
         this.route = route;
-        this.doubleJoin = false;
-        this.join = false;
-        this.isHost = false;
-        
-        if (this.gameType === "1") {
+
+        if (this.gameType === GameTypes.PVC) {
             this.greet = `Now we are playing, ${this.name}!`;
-        } else if (this.gameType === "2") {
+        } else if (this.gameType === GameTypes.CVC) {
             this.greet = ` Your browser is trying to guess ${sessionStorage.getItem("guess")}.`;
             this.startAutoPlay();
-        } else if (this.gameType === "3") {
-            this.greet = `Welcome, ${this.name}`;
-            this.socket = io('http://localhost:8080/socket.io');
-            this.socket.on('connect', function () {
-                __this.socket = this;
-                __this.socket.emit("getavr", __this.name, (rooms) => {
-                    __this.appendRooms(rooms);
-                });
-                __this.socket.on("joinmy", function (rival) {
-                    __this.greet = `Now we are playing, ${__this.name}! Your rival is ${rival}.`;
-                    __this.join = true;
-                });
-                __this.socket.on("updater", function (rooms) {
-                    __this.appendRooms(rooms);
-                });
-                __this.socket.on("confjoin", function () {
-                    __this.confirmJoin();
-                });
-            });
         }
     }
 
     ngOnInit(): void {
-        if (this.gameType !== "3") {
-            this.http.get(
-                `http://localhost:8080/api/game/${sessionStorage.getItem("gameID")}`
-            )
-                .subscribe(
-                (data: any) => {
-                    this.handleGameResponse(data);
-                },
-                error => {
-                    this.handleError(error);
-                });
+        this.http.get(this.formGameDataURL())
+            .subscribe(
+            (data: any) => {
+                this.handleGameResponse(data);
+            },
+            error => {
+                this.handleError(error);
+            });
+    }
+
+    public makeGuess(guess: string): Promise<{ bulls, cows, win }> {
+        let self = this;
+
+        // If the guess is empty - don't do anything
+        if (guess == null || guess === "") {
+            return;
         }
-    }
 
-    private appendRooms(rooms) {
-        rooms.forEach(r => {
-            if (r === "") return;
-            let newP = document.createElement('p')
-            newP.innerHTML = r;
-            document.getElementById('active-games').appendChild(newP)
-        });
-    }
-
-    makeGuess(): Promise<{ bulls, cows, win }> {
-        let __this = this;
-        if (this.guess.length < 4) {
-            this.guess = this.genPrepZeroes(this.guess);
+        // make a valid guess if less chars are detected
+        if (guess.length < 4) {
+            guess = this.guess = this.genPrepZeroes(guess);
         }
 
         return new Promise(
             (resolve: (res: { bulls, cows, win }) => void, reject: (res: boolean) => void) => {
-                __this.http.put(
-                    `http://localhost:8080/api/guess/${this.guess}`,
-                    `gameID=${sessionStorage.getItem('gameID')}`,
-                    { headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded') }
-
-                )
+                self.http.put(
+                    this.formMakeGuessURL(guess),
+                    this.formMakeGuessParams(),
+                    { headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded') })
                     .subscribe(
                     (data: any) => {
                         this.handleGameResponse(data);
@@ -117,111 +86,96 @@ export class PlayComponent implements OnInit {
                         this.handleError(error);
                     });
             });
-
     }
 
     private startAutoPlay() {
-        let _this = this;
+        let self = this;
         let bcResolver = new BCResolver();
-        const turnInterval = 750;
-        _this.engine = setInterval(playTurn, turnInterval);
-        function playTurn() {
-            _this.guess = bcResolver.makeGuess();
-            _this.makeGuess()
+
+        self.engine =
+            setInterval(playTurn, PlayComponent.autoPlayTurnInterval, bcResolver);
+
+        function playTurn(resolver: BCResolver) {
+            self.guess = resolver.makeGuess();
+            if (self.guess == self.lastGuess) {
+                clearInterval(self.engine);
+                alert("Something messed up. Please try again!");
+                return;
+            }
+
+            self.makeGuess(self.guess)
                 .then((res: { bulls, cows, win }) => {
                     if (res.win === true) {
-                        clearInterval(_this.engine);
-                        bcResolver = null;
+                        clearInterval(self.engine);
+                        resolver = null;
                         return;
                     }
-                    clearInterval(_this.engine);
-                    bcResolver.prune(_this.guess, res.bulls, res.cows);
-                    _this.engine = setInterval(playTurn, turnInterval);
+
+                    clearInterval(self.engine);
+                    resolver.prune(self.guess, res.bulls, res.cows);
+                    self.engine = setInterval(playTurn, PlayComponent.autoPlayTurnInterval, bcResolver);
+                    self.lastGuess = self.guess;
                 })
                 .catch((err: Error) => {
                     console.error(err);
                     alert(`${err.message}`);
-                    clearInterval(_this.engine);
+                    clearInterval(self.engine);
                 });
         };
     }
 
-    public prepareHost() {
-        this.socket.emit("creater", this.name, (data) => {
-            console.log(data);
-            if (data) {
-                document.getElementById('p2p-btns').innerHTML = '';
-                document.getElementById('active-games').innerHTML = '';
-                this.greet = `${this.name}, you are waiting for someone to join`;
-                // this.join = true;
-            } else {
-                console.log('It seems that you have already hosted a game');
+    private handleGameResponse(data: any) {
+        try {
+            document.getElementById("win").innerHTML = ''
+
+            if (data.p.win === true) {
+                let newP: HTMLParagraphElement = document.createElement('p');
+                newP.innerHTML =
+                    `Game won! It took ${data.p.t} seconds and ${data.p.m.length} tries.`;
+                document.getElementById('win').appendChild(newP);
             }
-        });
-    }
 
-    public prepareJoin() {
-        let roomName = prompt("Please input the name of your rival");
-        this.socket.emit("joinr", roomName, this.name, (data) => {
-            console.log(data);
-            if (data) {
-
-                document.getElementById('p2p-btns').innerHTML = '';
-                document.getElementById('active-games').innerHTML = '';
-                this.greet = `Now we are playing, ${this.name}! Your rival is ${roomName}`;
-                this.join = true;
+            if (data.p.bc == null) {
+                data.p.m.forEach(g => {
+                    this.formNewHistoryDoc(g.g, g);
+                });
             } else {
-                console.log('Could not join the game. Sorry...');
+                this.formNewHistoryDoc(this.guess, data.p);
             }
-        });
+        } catch (e) {
+            this.handleError(e)
+        }
     }
 
-    public confirmJoin() {
-        this.join = true;
+    private formGameDataURL() {
+        return `${PlayComponent.gameDataURL}${this.getSessionStorageGameId()}`;
     }
 
-    public inputGuess() {
-        this.socket.emit("inputguess", this.guess, this.name, (data) => {
-            // console.log(data);
-            // if (data) {
-            //     document.getElementById('play-guess-container').innerHTML = '';
-            //     this.greet = `${this.name}, you are waiting for someone to join`;
-            // } else {
-            //     console.log('It seems that you have already hosted a game');
-            // }
-        });
+    private formMakeGuessURL(guess: string): string {
+        return `${PlayComponent.guessURL}${this.guess}`;
+    }
+
+    private formMakeGuessParams(): string {
+        return `gameID=${this.getSessionStorageGameId()}`;
+    }
+
+    private getSessionStorageGameId(): string {
+        return sessionStorage.getItem('gameID');
+    }
+
+    private formBCString(guess: string, bulls: number, cows: number): string {
+        return `<strong>${guess}</strong> got you <strong>${bulls}</strong> bulls and <strong>${cows}</strong> cows`;
+    }
+
+    private formNewHistoryDoc(guess: string, payload: any) {
+        let np = this.genHistoryElement();
+        np.innerHTML = this.formBCString(guess, payload.bc.b, payload.bc.c);
+        document.getElementById("history").appendChild(np);
     }
 
     private handleError(e) {
         if (e.error) {
             alert(e.error.e)
-        }
-    }
-
-    private handleGameResponse(data) {
-        try {
-            document.getElementById("win").innerHTML = ''
-
-            if (data.p.win === true) {
-                let newP: HTMLParagraphElement = document.createElement("p");
-                newP.innerHTML =
-                    `Game won! It took ${data.p.t} seconds and ${data.p.m.length} tries.`;
-                document.getElementById("win").appendChild(newP);
-            }
-
-            if (data.p.bc == null) {
-                data.p.m.forEach(g => {
-                    let np = this.genHistoryElement();
-                    np.innerHTML = `<strong>${g.g}</strong> got you <strong>${g.bc.b}</strong> bulls and <strong>${g.bc.c}</strong> cows`;
-                    document.getElementById("history").appendChild(np);
-                });
-            } else {
-                let np = this.genHistoryElement();
-                np.innerHTML = `<strong>${this.guess}</strong> got you <strong>${data.p.bc.b}</strong> bulls and <strong>${data.p.bc.c}</strong> cows`;
-                document.getElementById("history").appendChild(np);
-            }
-        } catch (e) {
-
         }
     }
 
@@ -232,7 +186,7 @@ export class PlayComponent implements OnInit {
         return np;
     }
 
-    private genPrepZeroes(guess) {
+    private genPrepZeroes(guess: string): string {
         let pz = "";
         for (let i = 0; i < 4 - guess.length; i++) {
             pz += "0";

@@ -9,12 +9,14 @@ import { CommonModule } from '@angular/common';
 import { AppComponent } from './app.component';
 import { NameInitComponent } from './name-init.component';
 import { PlayComponent } from './play.component'
+import { RTPlayComponent } from './rt-play.component'
 
 @NgModule({
   declarations: [
     AppComponent,
     NameInitComponent,
-    PlayComponent
+    PlayComponent,
+    RTPlayComponent
   ],
   imports: [
     BrowserModule,

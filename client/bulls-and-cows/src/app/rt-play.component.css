@@ -1,0 +1,43 @@
+#results #win{
+    font-size: 1.3em;
+}
+
+.btn-outline-danger {
+     border-radius: 0; 
+}
+
+#play-container {
+    text-align: center;
+    margin: 0 auto;
+    margin-top: 90px;
+    position: relative;
+}
+
+#play-container #play-guess-container {
+    width: 300px;
+    margin: 0 auto;
+}
+
+#play-container #play-guess-container input {
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+#play-container #play-guess-container input[type="text"] {
+    padding: 5px;
+}
+
+#play-container #play-guess-container .ab {
+    min-width: 200px;
+    display: inline-block;
+    color: red;
+}
+
+#play-container #play-guess-container .ab:hover {
+    cursor: pointer;
+    color: white;
+}
+
+#play-container #play-guess-container .ab:not(:last-child) {
+    margin-bottom: 10px;
+}
