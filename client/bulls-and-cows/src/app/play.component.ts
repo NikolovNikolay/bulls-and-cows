@@ -25,6 +25,7 @@ export class PlayComponent implements OnInit {
     gameType: string;
     doubleJoin: boolean;
     join: boolean;
+    isHost: boolean;
 
     constructor(
         http: HttpClient,
@@ -39,6 +40,7 @@ export class PlayComponent implements OnInit {
         this.route = route;
         this.doubleJoin = false;
         this.join = false;
+        this.isHost = false;
         
         if (this.gameType === "1") {
             this.greet = `Now we are playing, ${this.name}!`;
@@ -148,8 +150,10 @@ export class PlayComponent implements OnInit {
         this.socket.emit("creater", this.name, (data) => {
             console.log(data);
             if (data) {
-                document.getElementById('play-guess-container').innerHTML = '';
+                document.getElementById('p2p-btns').innerHTML = '';
+                document.getElementById('active-games').innerHTML = '';
                 this.greet = `${this.name}, you are waiting for someone to join`;
+                // this.join = true;
             } else {
                 console.log('It seems that you have already hosted a game');
             }

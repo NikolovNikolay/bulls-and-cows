@@ -14,7 +14,7 @@
             <a class="btn btn-outline-danger ab" (click)="prepareHost()" id="host">HOST</a>
             <a class="btn btn-outline-danger ab" (click)="prepareJoin()" id="join">JOIN</a>
         </div>
-        <div *ngIf='join == true'>
+        <div *ngIf='join == true || isHost'>
             <div id="name-input-container-name-form" class="input-group">
                 <input placeholder="Input 4 distinct digits" [(ngModel)]="guess" id="guess" type="text" aria-label="Guess" aria-describedby="make-guess-btn"
                 />

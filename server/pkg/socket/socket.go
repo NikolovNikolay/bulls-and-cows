@@ -41,11 +41,12 @@ const (
 
 // New returns a new instance of SocketController
 func New(socket *socketio.Server, db *mgo.Session, inTest bool) *Socket {
-	return &Socket{
-		Socket:  socket,
-		roomMap: make(map[string]int),
-		db:      db,
-		inTest:  inTest}
+	s := Socket{
+		Socket: socket,
+		db:     db,
+		inTest: inTest}
+	s.roomMap = make(map[string]int)
+	return &s
 }
 
 // Init configures the socket.io server
@@ -128,6 +129,11 @@ func (s *Socket) createGameHandler(
 		}
 
 		g := game.New(utils.P2P)
+		e = g.Add(dbName, db)
+		if e != nil {
+			log.Println("Could not save game in DB")
+			return false
+		}
 
 		p.LogIn(&g.ID)
 		e = p.Update(dbName, db)
@@ -144,14 +150,7 @@ func (s *Socket) joinGameHandler(
 	so socketio.Socket) func(a, b string) bool {
 
 	return func(room, rival string) bool {
-		roomFull := false
-		for k, v := range s.roomMap {
-			if k == room && v == 2 {
-				roomFull = true
-			}
-		}
-
-		if roomFull {
+		if s.roomMap[room] == 2 {
 			return false
 		}
 
@@ -163,14 +162,14 @@ func (s *Socket) joinGameHandler(
 		db := utils.GetDBSession()
 		s.increaseRoomParticipants(room)
 		if !s.inTest {
-			e := so.BroadcastTo(roomDefault, evtJoinedAGame, rival)
-			if e != nil {
-				log.Printf("Could not broadcast event to '%s' room", roomDefault)
-			}
-			e = so.Join(room)
+			e := so.Join(room)
 			if e != nil {
 				log.Printf("Could not join '%s", room)
 				return false
+			}
+			e = so.BroadcastTo(room, evtJoinedAGame, rival)
+			if e != nil {
+				log.Printf("Could not broadcast event to '%s' room", roomDefault)
 			}
 		}
 
@@ -219,7 +218,7 @@ func (s *Socket) getGames(
 	so socketio.Socket) func(a string) []string {
 
 	return func(playerName string) []string {
-		var avrooms []string
+		avrooms := make([]string, 1)
 
 		for k, v := range s.roomMap {
 			if v < 2 && k != playerName {
@@ -268,9 +267,5 @@ func (s *Socket) setPlayerGuessNumHandler(
 }
 
 func (s *Socket) increaseRoomParticipants(room string) {
-	for k, v := range s.roomMap {
-		if k == room {
-			s.roomMap[k] = v + 1
-		}
-	}
+	s.roomMap[room] = s.roomMap[room] + 1
 }
