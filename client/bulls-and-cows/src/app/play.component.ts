@@ -19,7 +19,7 @@ import { GameDataService } from "./game-data.service";
 export class PlayComponent implements OnInit {
     private static get guessURL(): string { return `http://localhost:8080/api/guess/`; }
     private static get gameDataURL(): string { return `http://localhost:8080/api/game/`; }
-    private static get autoPlayTurnInterval(): number { return 700; }
+    private static get autoPlayTurnInterval(): number { return 1500; }
 
     private engine: any;
     private lastGuess: string;
