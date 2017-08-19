@@ -1,8 +1,8 @@
 # bulls-and-cows
 
-Server code is in **'server'** folder
+Server code is in `server` folder
 
-Client code is in **'client/bulls-and-cows'** folder
+Client code is in `client/bulls-and-cows` folder
 
 Server is configured to run on localhost, port **8080**
 
@@ -21,6 +21,8 @@ If some port configuration is required, please refer to:
 - The auto reolve algorithm in **Browser vs. Computer** mode crashes sometimes for still some unclear circumstances
 
 ### Before attempting to play:
+**You must have installed the latest version of MongoDB, as well as [Angular CLI](https://github.com/angular/angular-cli) (`npm install -g @angular/cli`)**
+
 - initialize Mongo Db with cli `{path to mongod} --dbpath {path to mongo data path}`
 - initialize the server with `go run main.go` in `server/cmd/srv` folder
 - initialize the front-end client with `ng serve --open` in the `client/bulls-and-cows/` folder
