@@ -12,9 +12,10 @@ If some port configuration is required, please refer to:
 - change server port: `server/cmd/srv/main.go` and update `servePort` constant
 - change client port: `client/bulls-and-cows/protractor.conf.js` and update `baseUrl` property
 
-**Running the tests will require db connection**
 
 ### The server app depends on MongoDB with default configuration, listening on port `27017`
+**Running the tests will require db connection**
+
 
 ### Know issues:
 - The auto reolve algorithm in **Browser vs. Computer** mode crashes sometimes for still some unclear circumstances
