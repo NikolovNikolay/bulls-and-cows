@@ -12,16 +12,15 @@ If some port configuration is required, please refer to:
 - change server port: `server/cmd/srv/main.go` and update `servePort` constant
 - change client port: `client/bulls-and-cows/protractor.conf.js` and update `baseUrl` property
 
+**Running the tests will require db connection**
+
 ### The server app depends on MongoDB with default configuration, listening on port `27017`
 
 ### Know issues:
 - The auto reolve algorithm in **Browser vs. Computer** mode crashes sometimes for still some unclear circumstances
 
-### Coming up:
-- Peer 2 peer gaming
-
 ### Before attempting to play:
-- initialize Mongo Db with cli `{path to mongod} --dpath {path to mongo data path}`
+- initialize Mongo Db with cli `{path to mongod} --dbpath {path to mongo data path}`
 - initialize the server with `go run main.go` in `server/cmd/srv` folder
 - initialize the front-end client with `ng serve --open` in the `client/bulls-and-cows/` folder
 
