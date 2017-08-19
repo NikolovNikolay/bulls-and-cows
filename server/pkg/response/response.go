@@ -16,11 +16,9 @@ func New(status int, payload interface{}, e error) *Response {
 	if status != 0 {
 		r.Status = status
 	}
-
 	if payload != nil {
 		r.Payload = payload
 	}
-
 	if e != nil {
 		r.Error = e.Error()
 	}

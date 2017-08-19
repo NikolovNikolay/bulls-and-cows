@@ -5,7 +5,12 @@ import { HttpHeaders } from '@angular/common/http'
 import { BCResolver } from "./bc-resolver";
 import { GameTypes } from './game-types'
 import * as io from 'socket.io-client';
+import { GameDataService } from "./game-data.service";
 
+/**
+ * Component initialized when Player vs. Computer
+ * and Computer vs. Computer was selected 
+ */
 @Component({
     selector: 'play',
     templateUrl: './play.component.html',
@@ -16,24 +21,23 @@ export class PlayComponent implements OnInit {
     private static get gameDataURL(): string { return `http://localhost:8080/api/game/`; }
     private static get autoPlayTurnInterval(): number { return 700; }
 
-    private http: HttpClient;
-    private route: ActivatedRoute;
-    private router: Router;
     private engine: any;
     private lastGuess: string;
 
     guess: string;
     name: string;
     greet: string;
-    gameType: string;
+    gameType: number;
 
     constructor(
-        http: HttpClient,
-        route: ActivatedRoute,
-        router: Router
+        private http: HttpClient,
+        private route: ActivatedRoute,
+        private router: Router,
+        protected gameDataService: GameDataService
     ) {
-        this.name = sessionStorage.getItem("name");
-        this.gameType = sessionStorage.getItem("gameType");
+        this.name = this.gameDataService.userName;
+        this.gameType = this.gameDataService.gameType;
+        this.guess = this.gameDataService.guess;
         this.http = http;
         this.router = router;
         this.route = route;
@@ -41,7 +45,7 @@ export class PlayComponent implements OnInit {
         if (this.gameType === GameTypes.PVC) {
             this.greet = `Now we are playing, ${this.name}!`;
         } else if (this.gameType === GameTypes.CVC) {
-            this.greet = ` Your browser is trying to guess ${sessionStorage.getItem("guess")}.`;
+            this.greet = `${this.name}, your browser is trying to guess ${this.guess}.`;
             this.startAutoPlay();
         }
     }
@@ -50,13 +54,14 @@ export class PlayComponent implements OnInit {
         this.http.get(this.formGameDataURL())
             .subscribe(
             (data: any) => {
-                this.handleGameResponse(data);
+                this.handleGameResponse(data.p);
             },
             error => {
                 this.handleError(error);
             });
     }
 
+    // Called when a player makes a guess (player or browser bot)
     public makeGuess(guess: string): Promise<{ bulls, cows, win }> {
         let self = this;
 
@@ -78,7 +83,7 @@ export class PlayComponent implements OnInit {
                     { headers: new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded') })
                     .subscribe(
                     (data: any) => {
-                        this.handleGameResponse(data);
+                        this.handleGameResponse(data.p);
                         resolve({ bulls: data.p.bc.b, cows: data.p.bc.c, win: data.p.win });
                     },
                     error => {
@@ -88,6 +93,8 @@ export class PlayComponent implements OnInit {
             });
     }
 
+    // Auto called if Computer vs. Computer game
+    // was selected
     private startAutoPlay() {
         let self = this;
         let bcResolver = new BCResolver();
@@ -124,23 +131,25 @@ export class PlayComponent implements OnInit {
         };
     }
 
-    private handleGameResponse(data: any) {
+    // Some helper methods for visualizing data
+    
+    protected handleGameResponse(data: any) {
         try {
-            document.getElementById("win").innerHTML = ''
+            document.getElementById("win").innerHTML = '';
 
-            if (data.p.win === true) {
+            if (data.win === true) {
                 let newP: HTMLParagraphElement = document.createElement('p');
                 newP.innerHTML =
-                    `Game won! It took ${data.p.t} seconds and ${data.p.m.length} tries.`;
+                    `Game won! It took ${data.t} seconds and ${data.m.length} tries.`;
                 document.getElementById('win').appendChild(newP);
             }
 
-            if (data.p.bc == null) {
-                data.p.m.forEach(g => {
+            if (data.bc == null) {
+                data.m.forEach(g => {
                     this.formNewHistoryDoc(g.g, g);
                 });
             } else {
-                this.formNewHistoryDoc(this.guess, data.p);
+                this.formNewHistoryDoc(this.guess, data);
             }
         } catch (e) {
             this.handleError(e)
@@ -148,7 +157,7 @@ export class PlayComponent implements OnInit {
     }
 
     private formGameDataURL() {
-        return `${PlayComponent.gameDataURL}${this.getSessionStorageGameId()}`;
+        return `${PlayComponent.gameDataURL}${this.getGameId()}`;
     }
 
     private formMakeGuessURL(guess: string): string {
@@ -156,14 +165,14 @@ export class PlayComponent implements OnInit {
     }
 
     private formMakeGuessParams(): string {
-        return `gameID=${this.getSessionStorageGameId()}`;
+        return `gameID=${this.getGameId()}`;
     }
 
-    private getSessionStorageGameId(): string {
-        return sessionStorage.getItem('gameID');
+    private getGameId(): string {
+        return this.gameDataService.gameId;
     }
 
-    private formBCString(guess: string, bulls: number, cows: number): string {
+    protected formBCString(guess: string, bulls: number, cows: number): string {
         return `<strong>${guess}</strong> got you <strong>${bulls}</strong> bulls and <strong>${cows}</strong> cows`;
     }
 
@@ -173,13 +182,13 @@ export class PlayComponent implements OnInit {
         document.getElementById("history").appendChild(np);
     }
 
-    private handleError(e) {
+    protected handleError(e) {
         if (e.error) {
             alert(e.error.e)
         }
     }
 
-    private genHistoryElement(): HTMLParagraphElement {
+    protected genHistoryElement(): HTMLParagraphElement {
         let np = document.createElement("p");
         np.className = "play-guess-res";
 

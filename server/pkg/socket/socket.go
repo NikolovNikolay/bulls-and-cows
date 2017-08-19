@@ -1,13 +1,18 @@
 package socket
 
 import (
+	"errors"
 	"log"
 	"strconv"
+	"time"
+
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/guess"
 
 	"gopkg.in/mgo.v2"
 
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/game"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
+	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/services"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	"github.com/googollee/go-socket.io"
 )
@@ -15,10 +20,12 @@ import (
 // Socket gives access to some real-time
 // communication via socket.io
 type Socket struct {
-	Socket  *socketio.Server
-	roomMap map[string]int
-	db      *mgo.Session
-	inTest  bool
+	Socket      *socketio.Server
+	roomMap     map[string]int
+	roomTypeMap map[string]int
+	db          *mgo.Session
+	inTest      bool
+	bcChecker   utils.BCCheck
 }
 
 const (
@@ -29,9 +36,12 @@ const (
 	evtJoinGame        = "joinr"
 	evtJoinedAGame     = "joinmy"
 	evtGetActiveGames  = "getavr"
-	evtMakeGuess       = "inputguess"
+	evtInputGuess      = "inputguess"
 	evtUpdActiveGames  = "updater"
 	evtConfirmJoinGame = "confjoin"
+	evtStartP2P        = "startp2p"
+	evtMakeGuess       = "makeguess"
+	evtGameEnd         = "gameend"
 
 	roomDefault = "defroom"
 
@@ -45,11 +55,14 @@ func New(socket *socketio.Server, db *mgo.Session, inTest bool) *Socket {
 		Socket: socket,
 		db:     db,
 		inTest: inTest}
+	s.bcChecker = utils.BCCheck{}
 	s.roomMap = make(map[string]int)
+	s.roomTypeMap = make(map[string]int)
 	return &s
 }
 
-// Init configures the socket.io server
+// Init configures the socket.io server - sets the
+// custom event listeners
 func (s Socket) Init() error {
 	e := s.Socket.On(evtConnection, func(so socketio.Socket) {
 		log.Println(so.Id(), "connected via socket.io")
@@ -58,7 +71,8 @@ func (s Socket) Init() error {
 		e = so.On(evtCreateGame, s.createGameHandler(so))
 		e = so.On(evtJoinGame, s.joinGameHandler(so))
 		e = so.On(evtGetActiveGames, s.getGames(so))
-		e = so.On(evtMakeGuess, s.setPlayerGuessNumHandler(so))
+		e = so.On(evtInputGuess, s.setPlayerGuessNumHandler(so))
+		e = so.On(evtMakeGuess, s.makeGuessHandler(so))
 		if e != nil {
 			log.Println("There was an error trying to register custom socket events")
 		}
@@ -85,19 +99,26 @@ func (s Socket) Init() error {
 	return nil
 }
 
+// Triggered when the client calls to host and
+// create a new game
 func (s *Socket) createGameHandler(
-	so socketio.Socket) func(data string) bool {
+	so socketio.Socket) func(data string, gt int) string {
 
-	return func(room string) bool {
+	return func(room string, gameType int) string {
 		if s.roomMap[room] > 0 {
-			return false
+			return ""
 		}
-
-		s.increaseRoomParticipants(room)
+		s.increaseRoomParticipants(room, gameType)
 		dbName := utils.DBName
+		if s.inTest {
+			dbName = utils.DBNameTest
+		}
 		db := utils.GetDBSession()
+
 		var e error
 		if !s.inTest {
+			// we broadcast the client in the lets say it lobby
+			// for the available rooms to join
 			e = so.BroadcastTo(
 				roomDefault,
 				evtUpdActiveGames,
@@ -110,6 +131,7 @@ func (s *Socket) createGameHandler(
 			if e != nil {
 				log.Printf("Could not leave the default room")
 			}
+
 			e = so.Join(room)
 			if e != nil {
 				log.Printf("Could not join '%s' room", room)
@@ -121,51 +143,51 @@ func (s *Socket) createGameHandler(
 			false,
 			utils.DBName,
 			utils.GetDBSession())
-
 		e = p.Add(dbName, db)
+
 		if e != nil {
 			log.Println("Could n insert new player to DB")
-			return false
+			return ""
 		}
-
 		g := game.New(utils.P2P)
+		p.LogIn(&g.ID)
+		g.AddPlayer(p)
 		e = g.Add(dbName, db)
+
 		if e != nil {
 			log.Println("Could not save game in DB")
-			return false
+			return ""
 		}
 
-		p.LogIn(&g.ID)
 		e = p.Update(dbName, db)
 		if e != nil {
 			log.Println("Could not update player in DB")
-			return false
+			return ""
 		}
 
-		return true
+		return g.ID.Hex()
 	}
 }
 
+// Triggered when the client calls to join a game
 func (s *Socket) joinGameHandler(
-	so socketio.Socket) func(a, b string) bool {
+	so socketio.Socket) func(a, b string) string {
 
-	return func(room, rival string) bool {
-		if s.roomMap[room] == 2 {
-			return false
+	return func(room, rival string) string {
+		if (s.roomMap[room] == 2 && s.roomTypeMap[room] == utils.P2P) || room == rival {
+			return ""
 		}
-
 		var dbName = utils.DBName
 		if s.inTest {
 			dbName = utils.DBNameTest
 		}
-
 		db := utils.GetDBSession()
-		s.increaseRoomParticipants(room)
+		s.increaseRoomParticipants(room, 0)
 		if !s.inTest {
 			e := so.Join(room)
 			if e != nil {
 				log.Printf("Could not join '%s", room)
-				return false
+				return ""
 			}
 			e = so.BroadcastTo(room, evtJoinedAGame, rival)
 			if e != nil {
@@ -176,14 +198,13 @@ func (s *Socket) joinGameHandler(
 		host, e := player.FindByName(room, dbName, s.db)
 		if e != nil {
 			log.Printf("Could not find host of '%s'", room)
-			return false
+			return ""
 		}
-
 		gID := host.LoggedIn
 		g, e := game.FindByID(gID.Hex(), dbName, s.db)
 		if e != nil {
 			log.Printf("Could not get game with host '%s'", host.Name)
-			return false
+			return ""
 		}
 		p := player.New(
 			rival,
@@ -191,35 +212,33 @@ func (s *Socket) joinGameHandler(
 			dbName,
 			db)
 		p.LogIn(gID)
-
 		e = p.Add(dbName, db)
 		if e != nil {
 			log.Printf("Could not add player '%s' to DB when attempting to join", p.Name)
 		}
-
 		g.AddPlayer(p)
 		e = g.Update(dbName, db)
 		if e != nil {
 			log.Printf("Could not update game '%s' in DB", g.ID)
 		}
-
 		if !s.inTest {
 			e = so.BroadcastTo(room, evtConfirmJoinGame)
 			if e != nil {
 				log.Printf("Could not broadcast join to '%s' room", room)
 			}
-		}
 
-		return true
+		}
+		return g.ID.Hex()
 	}
 }
 
+// Triggered from the client and returns the
+// available for a player rooms to join
 func (s *Socket) getGames(
 	so socketio.Socket) func(a string) []string {
 
 	return func(playerName string) []string {
 		avrooms := make([]string, 1)
-
 		for k, v := range s.roomMap {
 			if v < 2 && k != playerName {
 				avrooms = append(avrooms, []string{k}...)
@@ -230,14 +249,26 @@ func (s *Socket) getGames(
 	}
 }
 
+// Triggered from the client when attempting to set
+// a its number for the other player to guess
 func (s *Socket) setPlayerGuessNumHandler(
-	so socketio.Socket) func(a, b string) bool {
-	return func(guess, playerName string) bool {
+	so socketio.Socket) func(a, b, c string) bool {
+
+	return func(room, rawGuess, playerName string) bool {
+		valid := s.bcChecker.ValidateMadeGuess(rawGuess)
+		if !valid {
+			log.Printf("Invalid guess")
+			return false
+		}
+		parsedNum, e := strconv.Atoi(rawGuess)
+		if e != nil {
+			log.Printf("Could not parse the guess num")
+			return false
+		}
 		var dbName = utils.DBName
 		if s.inTest {
 			dbName = utils.DBNameTest
 		}
-
 		db := utils.GetDBSession()
 		p, e := player.FindByName(playerName, dbName, db)
 		if e != nil {
@@ -249,23 +280,132 @@ func (s *Socket) setPlayerGuessNumHandler(
 			log.Printf("Could not find game '%s'", g.ID)
 			return false
 		}
-
-		if g.Players[0].ID == p.ID {
-			g.Players[0].Number, _ = strconv.Atoi(guess)
-		} else {
-			g.Players[1].Number, _ = strconv.Atoi(guess)
+		for _, player := range g.Players {
+			if player.ID == p.ID {
+				player.Number = parsedNum
+			}
 		}
 
+		var ready bool
+		if ready = s.checkIfReadyForP2PStart(g); ready && !s.inTest {
+			// All players have set their numbers, so we return the host
+			// name, which is with index 0
+			e = so.BroadcastTo(room, evtStartP2P, g.Players[0].Name)
+			if e != nil {
+				log.Printf("Could not broadcast player name to room %s", room)
+			}
+		}
+		if ready {
+			g.Start(time.Now().Unix())
+		}
 		e = g.Update(dbName, db)
 		if e != nil {
 			log.Printf("Could not update game '%s'", g.ID)
 			return false
 		}
-
+		if ready {
+			return true
+		}
 		return true
 	}
 }
 
-func (s *Socket) increaseRoomParticipants(room string) {
+// Triggered when a player sends a number, attempting to guess
+// hit opponent's number
+func (s *Socket) makeGuessHandler(
+	so socketio.Socket) func(a, b, c, d string) *services.GuessPayload {
+	return func(room, rawGuess, playerName, gameID string) *services.GuessPayload {
+		valid := s.bcChecker.ValidateMadeGuess(rawGuess)
+		if !valid {
+			log.Printf("Could not parse guess")
+			return nil
+		}
+		guessInt, e := strconv.Atoi(rawGuess)
+		if e != nil {
+			log.Printf("Could not parse guess")
+			return nil
+		}
+		var dbName = utils.DBName
+		if s.inTest {
+			dbName = utils.DBNameTest
+		}
+		db := utils.GetDBSession()
+		g, e := game.FindByID(gameID, dbName, db)
+		if e != nil {
+			log.Printf("Could not get game from DB")
+			return nil
+		}
+		rn, e := s.getP2PRivalNumber(playerName, g)
+		if e != nil {
+			log.Printf(e.Error())
+			return nil
+		}
+		res := s.bcChecker.Check(rn, guessInt)
+		var pl *player.Player
+		for _, p := range g.Players {
+			if p.Name == playerName {
+				pl = p
+			}
+		}
+
+		pl.Guesses = append(pl.Guesses, []*guess.Guess{&guess.Guess{Bc: res, Guess: guessInt}}...)
+
+		win := false
+		if res.Bulls == 4 {
+			win = true
+			g.End(time.Now().Unix())
+		}
+		e = g.Update(dbName, db)
+		if e != nil {
+			log.Printf("Could not get update game in DB")
+			return nil
+		}
+		gp := services.GuessPayload{
+			BC:      res,
+			Guesses: pl.Guesses,
+			Win:     win,
+			Time:    g.EndTime - g.StartTime}
+		if win && !s.inTest {
+			e = so.BroadcastTo(room, evtGameEnd)
+			if e != nil {
+				log.Printf("Could not broadcast player name to room %s", room)
+			}
+		}
+
+		return &gp
+	}
+}
+
+// checkIfReadyForP2PStart checks the number of
+// all players in a game. If all of them have
+// input their own guesses, the game can start
+func (s *Socket) checkIfReadyForP2PStart(g *game.Game) bool {
+	ready := 0
+	for _, p := range g.Players {
+		if p.Number != 0 {
+			ready = ready + 1
+		}
+	}
+	if ready == len(g.Players) {
+		return true
+	}
+
+	return false
+}
+
+func (s *Socket) increaseRoomParticipants(room string, gameType int) {
 	s.roomMap[room] = s.roomMap[room] + 1
+	if gameType > 0 {
+		s.roomTypeMap[room] = gameType
+	}
+}
+
+func (s *Socket) getP2PRivalNumber(currentPlayer string, g *game.Game) (int, error) {
+	for _, p := range g.Players {
+		if p.Name != currentPlayer {
+			return p.Number, nil
+		}
+	}
+
+	return 0, errors.New("Could not find rival's number")
 }

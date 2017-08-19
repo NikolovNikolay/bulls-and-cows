@@ -32,7 +32,6 @@ func New(gameType int) *Game {
 
 // Add creates a new game in DB
 func (g *Game) Add(dbName string, db *mgo.Session) error {
-
 	if er := db.DB(
 		dbName).C(
 		utils.DBCGames).Insert(
@@ -50,13 +49,11 @@ func (g *Game) Start(t int64) {
 
 // Update updates a game in DB
 func (g *Game) Update(dbName string, db *mgo.Session) error {
-
 	if bson.IsObjectIdHex(g.ID.Hex()) {
 		e := db.DB(
 			dbName).C(
 			utils.DBCGames).UpdateId(
 			g.ID, g)
-
 		if e != nil {
 			return e
 		}
@@ -96,7 +93,6 @@ func FindByID(
 			bson.ObjectIdHex(gameID)).One(&game)
 		return &game, err
 	}
-
 	err = errors.New("Invalid gameID")
 	return &game, err
 }

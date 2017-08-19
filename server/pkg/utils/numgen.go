@@ -32,7 +32,6 @@ func (ng NumGen) Gen() int {
 	}
 
 	rStr := strconv.Itoa(r)
-
 	dgb := make(map[byte]bool)
 	dgn := [4]byte{}
 

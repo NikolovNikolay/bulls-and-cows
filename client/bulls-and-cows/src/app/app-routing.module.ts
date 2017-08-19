@@ -7,7 +7,7 @@ import { RTPlayComponent } from './rt-play.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/', pathMatch: 'full' },
-  { path: 'init/:id', component: NameInitComponent },
+  { path: 'init', component: NameInitComponent },
   { path: 'play', component: PlayComponent },
   { path: 'p2p', component: RTPlayComponent }
 ];

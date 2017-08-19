@@ -8,9 +8,17 @@
 		</div>
 		<div *ngIf='join == true'>
 			<div id="name-input-container-name-form" class="input-group">
-				<input placeholder="Input 4 distinct digits" [(ngModel)]="guess" id="guess" type="text" aria-label="Guess" aria-describedby="make-guess-btn"
+				<input placeholder="Input 4 distinct digits" [(ngModel)]="ownNumber" id="ownNumber" type="text" aria-label="OwnNumber" aria-describedby="input-own-num"
 				/>
-				<input type="button" id="make-guess-btn" class="btn btn-outline-danger" value="Confirm" (click)="inputGuess()" />
+				<input type="button" id="input-own-num" class="btn btn-outline-danger" value="Confirm" (click)="inputGuess()" />
+			</div>
+		</div>
+		<div *ngIf='playing == true'>
+			<div>{{turn}}</div>
+			<div id="name-input-container-name-form" class="input-group">
+				<input placeholder="Make a guess" [(ngModel)]="guess" id="guess" type="text" aria-label="Guess" aria-describedby="make-guess-btn"
+				/>
+				<input type="button" id="make-guess-btn" class="btn btn-outline-danger" value="Give it a try" (click)="makeRTGuess()" />
 			</div>
 		</div>
 		<div id="active-games"></div>

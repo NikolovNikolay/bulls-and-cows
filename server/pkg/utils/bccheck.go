@@ -22,7 +22,6 @@ func (bc BCCheck) Check(origin, guess int) *BCCheckResult {
 	for i := 0; i < len(oStr); i++ {
 		oMap[oStr[i]] = true
 	}
-
 	gStr := strconv.Itoa(guess)
 	if len(gStr) <= 3 {
 
@@ -30,7 +29,6 @@ func (bc BCCheck) Check(origin, guess int) *BCCheckResult {
 	}
 	bulls := 0
 	cows := 0
-
 	for i := 0; i < len(oStr); i++ {
 
 		// check for bull
@@ -38,13 +36,11 @@ func (bc BCCheck) Check(origin, guess int) *BCCheckResult {
 			bulls++
 			continue
 		}
-
 		// check for cow
 		if oMap[gStr[i]] == true {
 			cows++
 		}
 	}
-
 	return &BCCheckResult{
 		Bulls: bulls,
 		Cows:  cows}
@@ -54,10 +50,9 @@ func (bc BCCheck) Check(origin, guess int) *BCCheckResult {
 func (bc BCCheck) ValidateMadeGuess(gs string) bool {
 	dMap := make(map[byte]int)
 
-	if len(gs) > 4 {
+	if len(gs) != 4 {
 		return false
 	}
-
 	for i := 0; i < len(gs); i++ {
 		if gs[i] < byte('0') || gs[i] > byte('9') {
 			return false
@@ -65,7 +60,6 @@ func (bc BCCheck) ValidateMadeGuess(gs string) bool {
 		if dMap[gs[i]] > 0 {
 			return false
 		}
-
 		dMap[gs[i]] = dMap[gs[i]] + 1
 	}
 

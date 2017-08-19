@@ -10,6 +10,7 @@ import { AppComponent } from './app.component';
 import { NameInitComponent } from './name-init.component';
 import { PlayComponent } from './play.component'
 import { RTPlayComponent } from './rt-play.component'
+import { GameDataService } from './game-data.service';
 
 @NgModule({
   declarations: [
@@ -26,7 +27,7 @@ import { RTPlayComponent } from './rt-play.component'
     HttpClientModule,
     CommonModule
   ],
-  providers: [],
+  providers: [GameDataService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

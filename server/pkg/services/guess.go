@@ -82,7 +82,6 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 		DefSendResponseBeh(w, response)
 		return
 	}
-
 	if g.EndTime != 0 {
 		response.Payload = GuessPayload{
 			BC:      &utils.BCCheckResult{Bulls: 4, Cows: 0},
@@ -102,7 +101,6 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	var win = false
 	now := time.Now().Unix()
 	var t = (now - g.StartTime)
-
 	if br.Bulls == 4 {
 		win = true
 		g.End(now)
@@ -127,11 +125,9 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gs GuessService) validateGuessNumberParam(guess string) (int, error) {
-
 	if guess == "" {
 		return -1, errors.New("Missing parameter guess")
 	}
-
 	if !gs.bcChecker.ValidateMadeGuess(guess) {
 		return -1, errors.New("Invalid guess number")
 	}

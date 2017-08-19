@@ -39,6 +39,7 @@ body, html, ul, li {
   color: red;
   text-decoration: none;
   min-width: 200px;
+  cursor: pointer;
 }
 
 #app-component-nav ul li a:hover {

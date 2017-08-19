@@ -10,9 +10,18 @@
     </h3>
     <nav class="navbar navbar-light bg-faded">
       <ul>
-        <li><a class="btn btn-outline-danger ab" [routerLink]="['/init', 1]" id="ppvc">Player vs. Computer</a></li>
-        <li><a class="btn btn-outline-danger ab" [routerLink]="['/init', 2]" id="pcvc">Browser vs. Computer</a></li>
-        <li><a class="btn btn-outline-danger ab" [routerLink]="['/init', 3]" id="pcvc">Peer 2 Peer</a></li>
+        <li *ngIf="service.gameId == null || service.gameId==''">
+          <a class=" btn btn-outline-danger ab " (click)="selectGame(1) " id="ppvc ">Player vs. Computer</a>
+        </li>
+        <li *ngIf="service.gameId == null || service.gameId==''">
+          <a class="btn btn-outline-danger ab " (click)="selectGame(2) " id="pcvc ">Browser vs. Computer</a>
+        </li>
+        <li *ngIf="service.gameId == null || service.gameId==''">
+          <a class="btn btn-outline-danger ab " (click)="selectGame(3) " id="pcvc ">Peer 2 Peer</a>
+        </li>
+        <li *ngIf="service.gameId != null && service.gameId !=''">
+          <a class="btn btn-outline-danger ab " (click)="reset(3) " id="pcvc ">Reset</a>
+        </li>
       </ul>
     </nav>
   </div>

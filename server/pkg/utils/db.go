@@ -22,13 +22,10 @@ func initMongo() *mgo.Session {
 	if session != nil {
 		return session
 	}
-
 	session, err := mgo.Dial("mongodb://localhost")
-
 	if err != nil {
 		panic(err)
 	}
-
 	log.Println("Mongo session initialized")
 
 	return session

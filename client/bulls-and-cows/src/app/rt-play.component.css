@@ -5,7 +5,9 @@
 .btn-outline-danger {
      border-radius: 0; 
 }
-
+input[type="button"]:hover {
+    cursor: pointer;
+}
 #play-container {
     text-align: center;
     margin: 0 auto;

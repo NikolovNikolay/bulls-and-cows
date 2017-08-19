@@ -4,24 +4,23 @@ import { HttpClient } from '@angular/common/http';
 import { HttpHeaders } from '@angular/common/http';
 import { GameTypes } from './game-types';
 
+import { GameDataService } from './game-data.service';
+
 @Component({
     selector: 'name-init',
     templateUrl: './name-init.component.html',
-    styleUrls: ['./name-init.component.css']
+    styleUrls: ['./name-init.component.css'],
 })
-export class NameInitComponent implements OnInit {
+export class NameInitComponent {
     private static get initURL(): string { return 'http://localhost:8080/api/init'; }
 
-    private http: HttpClient;
-    private route: ActivatedRoute;
-    private router: Router;
     name: string;
-    gameType: number;
 
     constructor(
-        http: HttpClient,
-        route: ActivatedRoute,
-        router: Router
+        private gameDataService: GameDataService,
+        private http: HttpClient,
+        private route: ActivatedRoute,
+        private router: Router
     ) {
         this.http = http;
         this.route = route;
@@ -29,19 +28,9 @@ export class NameInitComponent implements OnInit {
         this.name = "";
     }
 
-    ngOnInit(): void {
-        // Parsing the query game type parameter
-        this.route.params.subscribe(
-            (params: Params) => {
-                this.gameType = params["id"];
-                if (this.gameType == 2) {
-                    this.initGame();
-                }
-            });
-    }
-
     public initGame() {
-        let gt = this.gameType + "";
+        this.gameDataService.userName = this.name;
+        let gt = this.gameDataService.gameType;
 
         // If game types is peer 2 peer, then
         // navigate p2p root
@@ -58,7 +47,7 @@ export class NameInitComponent implements OnInit {
             .subscribe(
             (data: any) => {
                 console.log(data);
-                sessionStorage.setItem("gameID", data.p.gameID);
+                this.gameDataService.gameId = data.p.gameID;
                 this.proceedPostInit(data)
             },
             error => {
@@ -67,18 +56,16 @@ export class NameInitComponent implements OnInit {
     }
 
     private forInitBodyParams(): string {
-        return `userName=${this.name}&gameType=${this.gameType}`;
+        return `userName=${this.gameDataService.userName}&gameType=${this.gameDataService.gameType}`;
     }
 
     private proceedPostInit(data) {
-        sessionStorage.setItem("name", data != null ? data.p.name : this.name);
-        sessionStorage.setItem("gameType", this.gameType + "");
 
-        if (this.gameType == parseInt(GameTypes.CVC)) {
-            sessionStorage.setItem("guess", data.p.guess);
+        if (this.gameDataService.gameType == GameTypes.CVC) {
+            this.gameDataService.guess = data.p.guess;
         }
 
-        if (this.gameType == parseInt(GameTypes.P2P)) {
+        if (this.gameDataService.gameType == GameTypes.P2P) {
             this.router.navigateByUrl('/p2p');
         } else {
             this.router.navigateByUrl('/play');

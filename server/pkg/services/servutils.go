@@ -40,11 +40,9 @@ func addTestHeadInRequest(r *http.Request) {
 func getVarFromRequest(r *http.Request, key string) string {
 	vars := mux.Vars(r)
 	paramVal := vars[key]
-
 	if paramVal == "" {
 		paramVal = r.FormValue(key)
 	}
-
 	if paramVal == "" {
 		paramVal = r.PostFormValue(key)
 	}
@@ -52,6 +50,7 @@ func getVarFromRequest(r *http.Request, key string) string {
 	return paramVal
 }
 
+// parses a http form
 func parseForm(r *http.Request) {
 	e := r.ParseForm()
 	if e != nil {
@@ -59,6 +58,8 @@ func parseForm(r *http.Request) {
 	}
 }
 
+// checks headers for custom "x-test" value and
+// return the proper db instance name
 func getTargetDbName(r *http.Request) string {
 	th := r.Header.Get(testHeader)
 	isTesting := th != ""
@@ -69,6 +70,8 @@ func getTargetDbName(r *http.Request) string {
 	return utils.DBName
 }
 
+// validates the required game type parameter
+// when initializing a new game
 func validateGameTypeParam(r *http.Request) (int, error) {
 	gameType := r.PostFormValue(paramGameTypeKey)
 	if gameType == "" {

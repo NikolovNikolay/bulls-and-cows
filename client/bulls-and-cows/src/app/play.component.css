@@ -13,6 +13,10 @@
     position: relative;
 }
 
+input[type="button"]:hover {
+    cursor: pointer;
+}
+
 #play-container #play-guess-container {
     width: 300px;
     margin: 0 auto;

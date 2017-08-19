@@ -12,7 +12,6 @@ func TestNew(t *testing.T) {
 	if r1.Status != 200 && r1.Payload != "test one payload" {
 		t.Error("Did not initialize response object properly", r1)
 	}
-
 	if r2.Status != 500 && r2.Error != "internal error" {
 		t.Error("Did not initialize response object properly", r2)
 	}

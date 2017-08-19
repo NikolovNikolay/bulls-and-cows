@@ -48,7 +48,6 @@ func TestDbOps(t *testing.T) {
 		if e != nil {
 			t.Error("Error appeared while trying to get game from DB", e)
 		}
-
 		if g.ID.Hex() != game.ID.Hex() {
 			t.Error("Did not get the right game from DB")
 		}
@@ -64,7 +63,6 @@ func TestDbOps(t *testing.T) {
 		if e != nil {
 			t.Error("Error appeared while trying to update game in DB", e)
 		}
-
 		ng, e := FindByID(
 			game.ID.Hex(),
 			utils.DBNameTest,
@@ -73,7 +71,6 @@ func TestDbOps(t *testing.T) {
 		if e != nil {
 			t.Error("Error appeared while trying to get game from DB", e)
 		}
-
 		if ng.Number != game.Number {
 			t.Error("Did not update game DB correctly", game.ID)
 		}
