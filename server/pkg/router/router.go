@@ -12,8 +12,8 @@ type BCRouter struct {
 }
 
 // New returns a new router instance
-func New() BCRouter {
-	return BCRouter{R: mux.NewRouter()}
+func New() *BCRouter {
+	return &BCRouter{R: mux.NewRouter()}
 }
 
 // RegisterService takes a Service interface and

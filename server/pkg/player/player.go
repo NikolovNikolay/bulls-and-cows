@@ -50,9 +50,9 @@ func (p *Player) Update(dbName string, db *mgo.Session) (e error) {
 }
 
 // LogIn marks the player as logged into a game
-func (p *Player) LogIn(gID *bson.ObjectId) {
+func (p *Player) LogIn(gameID *bson.ObjectId) {
 	p.Logged = true
-	p.LoggedIn = gID
+	p.LoggedIn = gameID
 }
 
 // LogOut marks the player as logged out of a game
@@ -65,8 +65,8 @@ func (p *Player) LogOut() {
 func FindByName(
 	name,
 	dbName string,
-	mon *mgo.Session) (p *Player, e error) {
-	c := mon.DB(dbName).C(utils.DBCPlayers)
+	db *mgo.Session) (p *Player, e error) {
+	c := db.DB(dbName).C(utils.DBCPlayers)
 	result := Player{}
 	err := c.Find(bson.M{"name": name}).One(&result)
 
@@ -77,10 +77,10 @@ func FindByName(
 func FindByID(
 	id,
 	dbName string,
-	mon *mgo.Session) (p *Player, e error) {
+	db *mgo.Session) (p *Player, e error) {
 	result := Player{}
 	if bson.IsObjectIdHex(id) {
-		c := mon.DB(dbName).C(utils.DBCPlayers)
+		c := db.DB(dbName).C(utils.DBCPlayers)
 		err := c.FindId(bson.ObjectIdHex(id)).One(&result)
 
 		return &result, err

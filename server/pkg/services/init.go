@@ -14,8 +14,10 @@ import (
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 )
 
-const paramUserNameKey = "userName"
-const paramGameTypeKey = "gameType"
+const (
+	paramUserNameKey = "userName"
+	paramGameTypeKey = "gameType"
+)
 
 // InitService initiates a new game and player in DB
 type InitService struct {

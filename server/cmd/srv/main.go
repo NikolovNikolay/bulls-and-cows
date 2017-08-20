@@ -20,27 +20,31 @@ const (
 
 func main() {
 	db := u.GetDBSession()
-	router := configureRoutes(r.New(), db)
+	r, e := configureRoutes(r.New(), db)
+	if e != nil {
+		panic(e)
+	}
 
 	h := cors.New(
 		cors.Options{
 			AllowedMethods:   []string{"POST", "GET", "PUT"},
 			AllowedOrigins:   []string{clientOrigin},
-			AllowCredentials: true}).Handler(router.R)
+			AllowCredentials: true}).Handler(r.R)
 
 	log.Fatal(http.ListenAndServe(servePort, h))
 }
 
-func configureRoutes(rt r.BCRouter, s *mgo.Session) r.BCRouter {
+func configureRoutes(rt *r.BCRouter, s *mgo.Session) (*r.BCRouter, error) {
 
-	ss, e := socketio.NewServer(nil)
+	sio, e := socketio.NewServer(nil)
 	if e != nil {
-		panic(e)
+		return nil, e
 	}
-	ws := socket.New(ss, s, false)
+
+	ws := socket.New(sio, s, false)
 	e = ws.Init()
 	if e != nil {
-		panic(e)
+		return nil, e
 	}
 
 	rt.RegisterService(services.NewInitService(s))
@@ -48,5 +52,5 @@ func configureRoutes(rt r.BCRouter, s *mgo.Session) r.BCRouter {
 	rt.RegisterService(services.NewGetGameService(s))
 	rt.R.Handle(socket.SockIoEndpoint, ws.Socket)
 
-	return rt
+	return rt, nil
 }

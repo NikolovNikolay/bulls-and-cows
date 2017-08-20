@@ -35,28 +35,28 @@ func TestGuessEndpoint(t *testing.T) {
 }
 
 func TestGuessValidation(t *testing.T) {
-	gg := NewGuessService(utils.GetDBSession())
+	gs := NewGuessService(utils.GetDBSession())
 	t.Run("Validate guess", func(t *testing.T) {
 		t.Run("valid guess", func(t *testing.T) {
-			g, e := gg.validateGuessNumberParam("9567")
+			g, e := gs.validateNumber("9567")
 			if g != 9567 || e != nil {
 				t.Error("Could not validate a valid guess")
 			}
 		})
 		t.Run("invalid guess number", func(t *testing.T) {
-			_, e := gg.validateGuessNumberParam("95674")
+			_, e := gs.validateNumber("95674")
 			if e == nil || e.Error() != "Invalid guess number" {
 				t.Error("Could not validate a valid guess")
 			}
 		})
 		t.Run("invalid guess mix string", func(t *testing.T) {
-			_, e := gg.validateGuessNumberParam("95f6")
+			_, e := gs.validateNumber("95f6")
 			if e == nil || e.Error() != "Invalid guess number" {
 				t.Error("Could not validate a valid guess")
 			}
 		})
 		t.Run("blank", func(t *testing.T) {
-			_, e := gg.validateGuessNumberParam("")
+			_, e := gs.validateNumber("")
 			if e == nil || e.Error() != "Missing parameter guess" {
 				t.Error("Could not validate a valid guess")
 			}

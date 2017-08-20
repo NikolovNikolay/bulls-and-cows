@@ -8,18 +8,16 @@ import (
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/player"
 	"github.com/NikolovNikolay/bulls-and-cows/server/pkg/utils"
 	"github.com/googollee/go-socket.io"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func TestSocket(t *testing.T) {
 
 	var socket *Socket
-	var db *mgo.Session
 
 	t.Run("Test socket", func(t *testing.T) {
 		t.Run("Instantiate", func(t *testing.T) {
-			db = utils.GetDBSession()
+			db := utils.GetDBSession()
 			io, e := socketio.NewServer(nil)
 			if e != nil {
 				t.Error("Could not instantiate socket.io server")
@@ -53,7 +51,7 @@ func TestSocket(t *testing.T) {
 				hostName,
 				false,
 				utils.DBNameTest,
-				db)
+				socket.db)
 
 			p.LogIn(&gID)
 
@@ -63,17 +61,17 @@ func TestSocket(t *testing.T) {
 			g.AddPlayer(p)
 
 			// Remove all players with the host name
-			_, e := db.DB(utils.DBNameTest).C(utils.DBCPlayers).RemoveAll(bson.M{"name": hostName})
+			_, e := socket.db.DB(utils.DBNameTest).C(utils.DBCPlayers).RemoveAll(bson.M{"name": hostName})
 			if e != nil {
 				t.Error("Could not delete all Joe`s records in DB")
 			}
 
 			// Add above objects to DB
-			e = g.Add(utils.DBNameTest, db)
+			e = g.Add(utils.DBNameTest, socket.db)
 			if e != nil {
 				t.Error("Could not add game to DB")
 			}
-			e = p.Add(utils.DBNameTest, db)
+			e = p.Add(utils.DBNameTest, socket.db)
 			if e != nil {
 				t.Error("Could not add player to DB")
 			}
@@ -117,19 +115,13 @@ func TestSocket(t *testing.T) {
 		})
 
 		t.Run("Test ready game and rival numbers", func(t *testing.T) {
-			var dbName = utils.DBName
-			if socket.inTest {
-				dbName = utils.DBNameTest
-			}
-
-			db := utils.GetDBSession()
-
+			var dbName = getTargetDBName(socket)
 			g := game.New(1)
 			g.SetNumber(8327)
 			g.Start(time.Now().Unix())
 			g.End(time.Now().Unix() + 1000)
 
-			e := g.Add(dbName, db)
+			e := g.Add(dbName, socket.db)
 			if e != nil {
 				t.Error("Could not insert game in DB")
 			}
@@ -143,7 +135,7 @@ func TestSocket(t *testing.T) {
 			g.AddPlayer(playerOne)
 			g.AddPlayer(playerTwo)
 
-			e = g.Update(dbName, db)
+			e = g.Update(dbName, socket.db)
 			if e != nil {
 				t.Error("Could not update game in DB")
 			}
@@ -163,7 +155,7 @@ func TestSocket(t *testing.T) {
 
 			success := socket.setPlayerGuessNumHandler(nil)("", "7645", "Player one")
 			if success {
-				g, e = game.FindByID(g.ID.Hex(), dbName, db)
+				g, e = game.FindByID(g.ID.Hex(), dbName, socket.db)
 				if e != nil {
 					t.Error("Could not get game by id from DB")
 				}
@@ -178,8 +170,4 @@ func TestSocket(t *testing.T) {
 			}
 		})
 	})
-}
-
-func TestSetPlayerGuess(t *testing.T) {
-
 }

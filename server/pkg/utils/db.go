@@ -9,7 +9,11 @@ import (
 var session *mgo.Session
 
 func init() {
-	session = initMongo()
+	s, e := initMongo()
+	if e != nil {
+		panic(e)
+	}
+	session = s
 }
 
 // GetDBSession returns the initialized DB session
@@ -18,15 +22,16 @@ func GetDBSession() *mgo.Session {
 }
 
 // initMongo initializes a mongo db connection
-func initMongo() *mgo.Session {
+func initMongo() (*mgo.Session, error) {
 	if session != nil {
-		return session
+		return session, nil
 	}
-	session, err := mgo.Dial("mongodb://localhost")
-	if err != nil {
-		panic(err)
+
+	session, e := mgo.Dial("mongodb://localhost")
+	if e != nil {
+		return nil, e
 	}
 	log.Println("Mongo session initialized")
 
-	return session
+	return session, nil
 }

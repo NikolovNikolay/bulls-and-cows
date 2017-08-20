@@ -132,7 +132,7 @@ export class PlayComponent implements OnInit {
     }
 
     // Some helper methods for visualizing data
-    
+
     protected handleGameResponse(data: any) {
         try {
             document.getElementById("win").innerHTML = '';
@@ -185,6 +185,9 @@ export class PlayComponent implements OnInit {
     protected handleError(e) {
         if (e.error) {
             alert(e.error.e)
+        }
+        if (!e.ok && e.status == 404) {
+            alert("Invalid guess number");
         }
     }
 

@@ -57,7 +57,7 @@ func (gs GuessService) Method() string {
 func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	response := response.New(200, "", nil)
 	parseForm(r)
-	newGuess, e := gs.validateGuessNumberParam(getVarFromRequest(r, paramGuessKey))
+	newGuess, e := gs.validateNumber(getVarFromRequest(r, paramGuessKey))
 	if e != nil {
 		response.Error = e.Error()
 		response.Status = http.StatusBadRequest
@@ -124,7 +124,7 @@ func (gs GuessService) Handle(w http.ResponseWriter, r *http.Request) {
 	DefSendResponseBeh(w, response)
 }
 
-func (gs GuessService) validateGuessNumberParam(guess string) (int, error) {
+func (gs GuessService) validateNumber(guess string) (int, error) {
 	if guess == "" {
 		return -1, errors.New("Missing parameter guess")
 	}

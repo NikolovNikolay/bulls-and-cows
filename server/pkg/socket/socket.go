@@ -109,12 +109,8 @@ func (s *Socket) createGameHandler(
 			return ""
 		}
 		s.increaseRoomParticipants(room, gameType)
-		dbName := utils.DBName
-		if s.inTest {
-			dbName = utils.DBNameTest
-		}
-		db := utils.GetDBSession()
 
+		dbName := getTargetDBName(s)
 		var e error
 		if !s.inTest {
 			// we broadcast the client in the lets say it lobby
@@ -143,7 +139,7 @@ func (s *Socket) createGameHandler(
 			false,
 			utils.DBName,
 			utils.GetDBSession())
-		e = p.Add(dbName, db)
+		e = p.Add(dbName, s.db)
 
 		if e != nil {
 			log.Println("Could n insert new player to DB")
@@ -152,14 +148,14 @@ func (s *Socket) createGameHandler(
 		g := game.New(utils.P2P)
 		p.LogIn(&g.ID)
 		g.AddPlayer(p)
-		e = g.Add(dbName, db)
+		e = g.Add(dbName, s.db)
 
 		if e != nil {
 			log.Println("Could not save game in DB")
 			return ""
 		}
 
-		e = p.Update(dbName, db)
+		e = p.Update(dbName, s.db)
 		if e != nil {
 			log.Println("Could not update player in DB")
 			return ""
@@ -177,11 +173,8 @@ func (s *Socket) joinGameHandler(
 		if (s.roomMap[room] == 2 && s.roomTypeMap[room] == utils.P2P) || room == rival {
 			return ""
 		}
-		var dbName = utils.DBName
-		if s.inTest {
-			dbName = utils.DBNameTest
-		}
-		db := utils.GetDBSession()
+
+		dbName := getTargetDBName(s)
 		s.increaseRoomParticipants(room, 0)
 		if !s.inTest {
 			e := so.Join(room)
@@ -210,14 +203,14 @@ func (s *Socket) joinGameHandler(
 			rival,
 			false,
 			dbName,
-			db)
+			s.db)
 		p.LogIn(gID)
-		e = p.Add(dbName, db)
+		e = p.Add(dbName, s.db)
 		if e != nil {
 			log.Printf("Could not add player '%s' to DB when attempting to join", p.Name)
 		}
 		g.AddPlayer(p)
-		e = g.Update(dbName, db)
+		e = g.Update(dbName, s.db)
 		if e != nil {
 			log.Printf("Could not update game '%s' in DB", g.ID)
 		}
@@ -265,17 +258,14 @@ func (s *Socket) setPlayerGuessNumHandler(
 			log.Printf("Could not parse the guess num")
 			return false
 		}
-		var dbName = utils.DBName
-		if s.inTest {
-			dbName = utils.DBNameTest
-		}
-		db := utils.GetDBSession()
-		p, e := player.FindByName(playerName, dbName, db)
+
+		dbName := getTargetDBName(s)
+		p, e := player.FindByName(playerName, dbName, s.db)
 		if e != nil {
 			log.Printf("Could not find player '%s'", playerName)
 			return false
 		}
-		g, e := game.FindByID(p.LoggedIn.Hex(), dbName, db)
+		g, e := game.FindByID(p.LoggedIn.Hex(), dbName, s.db)
 		if e != nil {
 			log.Printf("Could not find game '%s'", g.ID)
 			return false
@@ -298,7 +288,7 @@ func (s *Socket) setPlayerGuessNumHandler(
 		if ready {
 			g.Start(time.Now().Unix())
 		}
-		e = g.Update(dbName, db)
+		e = g.Update(dbName, s.db)
 		if e != nil {
 			log.Printf("Could not update game '%s'", g.ID)
 			return false
@@ -325,12 +315,8 @@ func (s *Socket) makeGuessHandler(
 			log.Printf("Could not parse guess")
 			return nil
 		}
-		var dbName = utils.DBName
-		if s.inTest {
-			dbName = utils.DBNameTest
-		}
-		db := utils.GetDBSession()
-		g, e := game.FindByID(gameID, dbName, db)
+		dbName := getTargetDBName(s)
+		g, e := game.FindByID(gameID, dbName, s.db)
 		if e != nil {
 			log.Printf("Could not get game from DB")
 			return nil
@@ -348,14 +334,14 @@ func (s *Socket) makeGuessHandler(
 			}
 		}
 
-		pl.Guesses = append(pl.Guesses, []*guess.Guess{&guess.Guess{Bc: res, Guess: guessInt}}...)
+		pl.Guesses = append(pl.Guesses, []*guess.Guess{&guess.Guess{Bc: res, Number: guessInt}}...)
 
 		win := false
 		if res.Bulls == 4 {
 			win = true
 			g.End(time.Now().Unix())
 		}
-		e = g.Update(dbName, db)
+		e = g.Update(dbName, s.db)
 		if e != nil {
 			log.Printf("Could not get update game in DB")
 			return nil
@@ -408,4 +394,14 @@ func (s *Socket) getP2PRivalNumber(currentPlayer string, g *game.Game) (int, err
 	}
 
 	return 0, errors.New("Could not find rival's number")
+}
+
+func getTargetDBName(s *Socket) string {
+
+	dbName := utils.DBName
+	if s.inTest {
+		dbName = utils.DBNameTest
+	}
+
+	return dbName
 }

@@ -80,17 +80,17 @@ func (g *Game) SetNumber(num int) {
 
 // FindByID finds a game bt ID in DB
 func FindByID(
-	gameID string,
+	id string,
 	dbName string,
-	mon *mgo.Session) (*Game, error) {
+	db *mgo.Session) (*Game, error) {
 
 	game := Game{}
 	var err error
-	if bson.IsObjectIdHex(gameID) {
-		err = mon.DB(
+	if bson.IsObjectIdHex(id) {
+		err = db.DB(
 			dbName).C(
 			utils.DBCGames).FindId(
-			bson.ObjectIdHex(gameID)).One(&game)
+			bson.ObjectIdHex(id)).One(&game)
 		return &game, err
 	}
 	err = errors.New("Invalid gameID")

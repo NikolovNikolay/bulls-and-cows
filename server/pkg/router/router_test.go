@@ -28,10 +28,10 @@ func (s testService) Handle(w http.ResponseWriter, response *http.Request) {
 }
 
 func TestServiceReg(t *testing.T) {
-	router := New()
-	r := router.RegisterService(testService{})
-	methods, e := r.GetMethods()
-	if e != nil || len(methods) > 1 || len(methods) < 1 || methods[0] != "GET" {
+	rtr := New()
+	r := rtr.RegisterService(testService{})
+	meths, e := r.GetMethods()
+	if e != nil || len(meths) > 1 || len(meths) < 1 || meths[0] != "GET" {
 		t.Error("Incorrectly added a new service to router")
 	}
 }

@@ -13,7 +13,7 @@ func TestBson(t *testing.T) {
 		bc.Bulls,
 		bc.Cows)
 
-	if g.Bc.Bulls != 0 && g.Bc.Cows != 3 && g.Guess != 1234 {
+	if g.Bc.Bulls != 0 && g.Bc.Cows != 3 && g.Number != 1234 {
 		t.Error("Guess was not initialied as expected")
 	}
 
@@ -23,7 +23,7 @@ func TestBson(t *testing.T) {
 		bc.Bulls,
 		bc.Cows)
 
-	if g.Bc.Bulls != 1 && g.Bc.Cows != 3 && g.Guess != 4577 {
+	if g.Bc.Bulls != 1 && g.Bc.Cows != 3 && g.Number != 4577 {
 		t.Error("Guess was not initialied as expected")
 	}
 
@@ -33,7 +33,7 @@ func TestBson(t *testing.T) {
 		bc.Bulls,
 		bc.Cows)
 
-	if g.Bc.Bulls != 2 && g.Bc.Cows != 2 && g.Guess != 1278 {
+	if g.Bc.Bulls != 2 && g.Bc.Cows != 2 && g.Number != 1278 {
 		t.Error("Guess was not initialied as expected")
 	}
 }
