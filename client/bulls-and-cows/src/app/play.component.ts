@@ -186,9 +186,6 @@ export class PlayComponent implements OnInit {
         if (e.error) {
             alert(e.error.e)
         }
-        if (!e.ok && e.status == 404) {
-            alert("Invalid guess number");
-        }
     }
 
     protected genHistoryElement(): HTMLParagraphElement {
